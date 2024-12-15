@@ -1,0 +1,14 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+    "scikit-build-core",
+    "cmake>=3.18",
+    "ninja",
+    "pybind11"
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "cugrad"
+version = "0.0.1"
