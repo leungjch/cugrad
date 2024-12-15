@@ -36,8 +36,8 @@ find_package(pybind11 CONFIG REQUIRED)
 # Include directories
 include_directories(${Python3_INCLUDE_DIRS} include)
 
-# Add Value source files
-set(VALUE_SOURCES src/value.cpp)
+# Add Tensor source files
+set(VALUE_SOURCES src/tensor.cpp src/op.cpp)
 
 # Add bindings using pybind11
 pybind11_add_module(cugrad src/bindings.cpp ${VALUE_SOURCES})
