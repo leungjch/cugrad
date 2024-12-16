@@ -50,6 +50,18 @@ std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other)
     return make_tensor(div_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
 }
 
+std::shared_ptr<Tensor> Tensor::tanh()
+{
+    auto tanh_op = std::make_shared<TanhOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    return make_tensor(tanh_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+}
+
+std::shared_ptr<Tensor> Tensor::exp()
+{
+    auto exp_op = std::make_shared<ExpOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    return make_tensor(exp_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+}
+
 void Tensor::backward()
 {
     // Initialize the gradient of the output tensor to 1.0

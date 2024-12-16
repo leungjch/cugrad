@@ -31,6 +31,9 @@ public:
     std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &other);
     std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &other);
 
+    std::shared_ptr<Tensor> tanh();
+    std::shared_ptr<Tensor> exp();
+
     // Backward Pass
     void backward();
 
