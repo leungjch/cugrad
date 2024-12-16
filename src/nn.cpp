@@ -13,8 +13,7 @@ float make_random()
     return random;
 }
 
-Linear::Linear(int in_features, int out_features)
-    : in_features(in_features), out_features(out_features)
+Neuron::Neuron(int in_features, bool nonlin) : in_features(in_features), nonlin(nonlin)
 {
     // Initialize the weights and bias
     // Random initialization
@@ -29,7 +28,7 @@ Linear::Linear(int in_features, int out_features)
 }
 
 // compute w * x + b
-std::shared_ptr<Tensor> Linear::forward(std::vector<std::shared_ptr<Tensor>> input)
+std::vector<std::shared_ptr<Tensor>> Neuron::operator()(std::vector<std::shared_ptr<Tensor>> input)
 {
     // Check size of input == in_features
     if (weights.size() != input.size())
@@ -46,26 +45,81 @@ std::shared_ptr<Tensor> Linear::forward(std::vector<std::shared_ptr<Tensor>> inp
     }
     sm += bias->data;
 
-    auto output = std::make_shared<Tensor>(sm)->tanh();
-    output->label = "Linear";
-    return output;
-}
-
-void Linear::zero_grad()
-{
-    // Zero the gradients
-    for (auto &weight : weights)
+    auto output = std::make_shared<Tensor>(sm);
+    if (nonlin)
     {
-        weight->zero_grad();
+        output = std::make_shared<Tensor>(sm)->tanh();
     }
-    bias->zero_grad();
+    output->label = "Neuron";
+    return {output};
 }
 
-std::vector<std::shared_ptr<Tensor>> Linear::parameters()
+std::vector<std::shared_ptr<Tensor>> Neuron::parameters()
 {
     // Return the parameters ( weights and bias included )
-    // I want to avoid copying the vectors, so I will return a reference
     std::vector<std::shared_ptr<Tensor>> params;
     params.insert(params.end(), weights.begin(), weights.end());
+    return params;
+}
+
+Layer::Layer(int in_features, int out_features) : in_features(in_features), out_features(out_features)
+{
+    // Initialize the weights and bias
+    // Random initialization
+    neurons.resize(out_features);
+    for (int i = 0; i < out_features; i++)
+    {
+        auto n = std::make_shared<Neuron>(in_features);
+        neurons[i] = n;
+    }
+}
+
+std::vector<std::shared_ptr<Tensor>> Layer::operator()(std::vector<std::shared_ptr<Tensor>> input)
+{
+    outputs.reserve(out_features);
+    for (int i = 0; i < neurons.size(); i++)
+    {
+        auto output = neurons[i]->operator()(input);
+        outputs.insert(outputs.end(), output.begin(), output.end());
+    }
+
+    return outputs;
+}
+
+std::vector<std::shared_ptr<Tensor>> Layer::parameters()
+{
+    // Return the parameters ( weights and bias included )
+    std::vector<std::shared_ptr<Tensor>> params;
+    for (auto &neuron : neurons)
+    {
+        auto n_params = neuron->parameters();
+        params.insert(params.end(), n_params.begin(), n_params.end());
+    }
+    return params;
+}
+
+MLP::MLP(int in_features, int out_features)
+{
+}
+
+std::vector<std::shared_ptr<Tensor>> MLP::operator()(std::vector<std::shared_ptr<Tensor>> input)
+{
+    auto x = input;
+    for (auto &layer : layers)
+    {
+        x = layer->operator()(x);
+    }
+    return x;
+}
+
+std::vector<std::shared_ptr<Tensor>> MLP::parameters()
+{
+    // Return the parameters ( weights and bias included )
+    std::vector<std::shared_ptr<Tensor>> params;
+    for (auto &layer : layers)
+    {
+        auto l_params = layer->parameters();
+        params.insert(params.end(), l_params.begin(), l_params.end());
+    }
     return params;
 }

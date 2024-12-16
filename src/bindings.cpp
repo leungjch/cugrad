@@ -6,7 +6,7 @@
 
 #include <memory>
 #include "tensor.h"
-#include "nn.h" // Include the nn header to bind Linear
+#include "nn.h" // Include the nn header to bind Neuron
 
 namespace py = pybind11;
 
@@ -77,19 +77,23 @@ PYBIND11_MODULE(cugrad, m)
 
      // Bind the Module base class (if you want to expose it)
      py::class_<Module, std::shared_ptr<Module>>(nn, "Module")
-         .def("forward", &Module::forward, "Forward pass")
+         .def("__call__", &Module::operator(), "Call operator for the Module")
          .def("zero_grad", &Module::zero_grad, "Zero gradients")
          .def("parameters", &Module::parameters, "Get parameters");
 
-     // Bind the Linear class to the 'nn' submodule
-     py::class_<Linear, Module, std::shared_ptr<Linear>>(nn, "Linear")
-         .def(py::init<int, int>(), py::arg("in_features"), py::arg("out_features"), "Linear layer constructor")
-         .def_readwrite("weights", &Linear::weights, "Weights of the linear layer")
-         .def_readwrite("bias", &Linear::bias, "Bias of the linear layer")
-         .def_readwrite("activation", &Linear::activation, "Activation operation")
-         .def_readwrite("in_features", &Linear::in_features, "Number of input features")
-         .def_readwrite("out_features", &Linear::out_features, "Number of output features")
-         .def("forward", &Linear::forward, py::arg("input"), "Forward pass of the linear layer")
+     // Bind the Neuron class to the 'nn' submodule
+     py::class_<Neuron, Module, std::shared_ptr<Neuron>>(nn, "Neuron")
+         .def(py::init<int, int>(), py::arg("in_features"), py::arg("nonlin"), "Neuron layer constructor")
+         .def_readwrite("weights", &Neuron::weights, "Weights of the Neuron layer")
+         .def_readwrite("bias", &Neuron::bias, "Bias of the Neuron layer")
+         .def_readwrite("activation", &Neuron::activation, "Activation operation")
+         .def_readwrite("in_features", &Neuron::in_features, "Number of input features")
          .def("zero_grad", &Module::zero_grad, "Zero gradients")
-         .def("parameters", &Module::parameters, "Get parameters");
+         .def("parameters", &Module::parameters, "Get parameters")
+         .def("__call__", &Neuron::operator(), py::arg("input"), "Call operator for the Neuron layer");
+
+     // Bind the Layer class to the 'nn' submodule
+     py::class_<Layer, Module, std::shared_ptr<Layer>>(nn, "Layer")
+         .def(py::init<int, int>(), py::arg("input_size"), py::arg("output_size"), "Layer constructor")
+         .def("__call__", &Layer::operator(), py::arg("input"), "Call operator for the Layer");
 }

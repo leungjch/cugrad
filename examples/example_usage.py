@@ -1,6 +1,6 @@
 # example_usage.py
 
-from cugrad.nn import Linear
+from cugrad.nn import Layer
 from cugrad.tensor import Tensor
 
 def main():
@@ -19,10 +19,12 @@ def main():
     dfs(e)
 
     # Example usage of Linear
-    linear = Linear(1, 1)
-    input_tensor = Tensor(5.0)
-    output = linear.forward([input_tensor])
-    print(output)
+    x = [Tensor(2.0), Tensor(3.0)]
+    n = Layer(2,3)
+    
+    res = n(x)
+    for t in res:
+        print(t)
 
 if __name__ == "__main__":
     main()
