@@ -15,26 +15,27 @@ class Tensor : public std::enable_shared_from_this<Tensor>
 public:
     float data;
     float grad;
-    std::shared_ptr<Op> op;                       // Operation that created this Tensor
-    std::vector<std::shared_ptr<Tensor>> parents; // Parent Tensors
+    std::string label;                             // Label for debugging
+    std::shared_ptr<Op> op;                        // Operation that created this Tensor
+    std::vector<std::shared_ptr<Tensor>> children; // Children tensors
 
     // Constructors
-    Tensor(VALUE_TYPE data, std::shared_ptr<Op> op = nullptr, std::vector<std::shared_ptr<Tensor>> parents = {})
-        : data(data), grad(0.0f), op(op), parents(parents) {}
+    Tensor(VALUE_TYPE data, std::shared_ptr<Op> op = nullptr, std::vector<std::shared_ptr<Tensor>> children = {})
+        : data(data), grad(0.0f), op(op), children(children) {}
 
-    Tensor() : data(0.0f), grad(0.0f), op(nullptr), parents({}) {}
+    Tensor() : data(0.0f), grad(0.0f), op(nullptr), children({}) {}
 
     // Operator Overloads
     std::shared_ptr<Tensor> operator+(const std::shared_ptr<Tensor> &other);
-    // std::shared_ptr<Tensor> operator-(const std::shared_ptr<Tensor> &other) const;
-    // std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &other) const;
-    // std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &other) const;
+    std::shared_ptr<Tensor> operator-(const std::shared_ptr<Tensor> &other);
+    std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &other);
+    std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &other);
 
     // Backward Pass
     void backward();
 
     // Topological Sort Utility
-    void topological_sort(std::vector<std::shared_ptr<Tensor>> &nodes, std::vector<std::shared_ptr<Tensor>> &visited);
+    void topological_sort(std::vector<std::shared_ptr<Tensor>> &ordering);
 
     // Reset gradients (useful for multiple backward passes)
     void zero_grad();
@@ -42,11 +43,5 @@ public:
     // Friend function for ostream
     friend std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 };
-
-// Factory function to create shared_ptr<Tensor>
-inline std::shared_ptr<Tensor> make_tensor(float data, std::shared_ptr<Op> op = nullptr, std::vector<std::shared_ptr<Tensor>> parents = {})
-{
-    return std::make_shared<Tensor>(data, op, parents);
-}
 
 #endif // TENSOR_H
