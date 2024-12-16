@@ -37,10 +37,10 @@ find_package(pybind11 CONFIG REQUIRED)
 include_directories(${Python3_INCLUDE_DIRS} include)
 
 # Add Tensor source files
-set(VALUE_SOURCES src/tensor.cpp src/op.cpp)
+set(CUGRAD_SOURCES src/tensor.cpp src/op.cpp src/nn.cpp)
 
 # Add bindings using pybind11
-pybind11_add_module(cugrad src/bindings.cpp ${VALUE_SOURCES})
+pybind11_add_module(cugrad src/bindings.cpp ${CUGRAD_SOURCES})
 
 # # Define the install target
 # install(TARGETS cugrad
