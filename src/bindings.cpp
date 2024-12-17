@@ -6,7 +6,8 @@
 
 #include <memory>
 #include "tensor.h"
-#include "nn.h" // Include the nn header to bind Neuron
+#include "nn.h"
+#include "op.h" // Include Op classes
 
 namespace py = pybind11;
 
@@ -38,6 +39,29 @@ PYBIND11_MODULE(cugrad, m)
      // Create the 'tensor' submodule
      py::module tensor = m.def_submodule("tensor", "Tensor operations and classes");
 
+     // Bind the Op base class
+     py::class_<Op, std::shared_ptr<Op>>(m, "Op")
+         .def_readonly("op_type", &Op::op_type, "Type of operation");
+
+     // Bind derived Op classes
+     py::class_<AddOp, Op, std::shared_ptr<AddOp>>(m, "AddOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::class_<SubtractOp, Op, std::shared_ptr<SubtractOp>>(m, "SubtractOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::class_<MultiplyOp, Op, std::shared_ptr<MultiplyOp>>(m, "MultiplyOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::class_<DivideOp, Op, std::shared_ptr<DivideOp>>(m, "DivideOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::class_<ExpOp, Op, std::shared_ptr<ExpOp>>(m, "ExpOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::class_<TanhOp, Op, std::shared_ptr<TanhOp>>(m, "TanhOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
      // Bind the Tensor class to the 'tensor' submodule
      py::class_<Tensor, std::shared_ptr<Tensor>>(tensor, "Tensor")
          // Constructors
@@ -49,6 +73,7 @@ PYBIND11_MODULE(cugrad, m)
          .def_readwrite("grad", &Tensor::grad, "Gradient of the tensor")
          .def_readwrite("children", &Tensor::children, "Child tensors")
          .def_readwrite("label", &Tensor::label, "Label for debugging")
+         .def_readonly("op", &Tensor::op, "Operation that created this tensor")
 
          // Methods
          .def("backward", &Tensor::backward, "Compute the gradients")
@@ -75,7 +100,7 @@ PYBIND11_MODULE(cugrad, m)
      // Create the 'nn' submodule
      py::module nn = m.def_submodule("nn", "Neural network modules");
 
-     // Bind the Module base class (if you want to expose it)
+     // Bind the Module base class
      py::class_<Module, std::shared_ptr<Module>>(nn, "Module")
          .def("__call__", &Module::operator(), "Call operator for the Module")
          .def("zero_grad", &Module::zero_grad, "Zero gradients")
@@ -83,7 +108,7 @@ PYBIND11_MODULE(cugrad, m)
 
      // Bind the Neuron class to the 'nn' submodule
      py::class_<Neuron, Module, std::shared_ptr<Neuron>>(nn, "Neuron")
-         .def(py::init<int, int>(), py::arg("in_features"), py::arg("nonlin"), "Neuron layer constructor")
+         .def(py::init<int, bool>(), py::arg("in_features"), py::arg("nonlin"), "Neuron layer constructor")
          .def_readwrite("weights", &Neuron::weights, "Weights of the Neuron layer")
          .def_readwrite("bias", &Neuron::bias, "Bias of the Neuron layer")
          .def_readwrite("activation", &Neuron::activation, "Activation operation")

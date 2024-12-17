@@ -1,0 +1,26 @@
+digraph {
+	rankdir=LR size="12,12"
+	tensor_0 [label="e
+Data: 7.00
+Grad: 1.00" shape=ellipse]
+	op_1 [label=add fillcolor=gray shape=box style=filled]
+	op_1 -> tensor_0
+	tensor_2 [label="d
+Data: 6.00
+Grad: 1.00" shape=ellipse]
+	op_3 [label=mul fillcolor=gray shape=box style=filled]
+	op_3 -> tensor_2
+	tensor_4 [label="a
+Data: 2.00
+Grad: 3.00" shape=ellipse]
+	tensor_4 -> op_3
+	tensor_5 [label="b
+Data: 3.00
+Grad: 2.00" shape=ellipse]
+	tensor_5 -> op_3
+	tensor_2 -> op_1
+	tensor_6 [label="c
+Data: 1.00
+Grad: 1.00" shape=ellipse]
+	tensor_6 -> op_1
+}

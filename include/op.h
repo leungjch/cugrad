@@ -18,7 +18,7 @@ public:
     virtual VALUE_TYPE forward() = 0;
     virtual void backward() = 0;
 
-    Op(const std::vector<std::shared_ptr<Tensor>> &inputs) : inputs(inputs)
+    Op(const std::vector<std::shared_ptr<Tensor>> &inputs, std::string op_type = "") : inputs(inputs), op_type(op_type)
     {
     }
 
@@ -26,13 +26,14 @@ public:
 
     std::shared_ptr<Tensor> output;
     std::vector<std::shared_ptr<Tensor>> inputs;
+    std::string op_type;
 };
 
 class AddOp : public Op
 {
 public:
     // Constructor for AddOp
-    AddOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    AddOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "add") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;
@@ -43,7 +44,7 @@ class SubtractOp : public Op
 {
 public:
     // Constructor for SubtractOp
-    SubtractOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    SubtractOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "sub") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;
@@ -54,7 +55,7 @@ class MultiplyOp : public Op
 {
 public:
     // Constructor for MultiplyOp
-    MultiplyOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    MultiplyOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "mul") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;
@@ -65,7 +66,7 @@ class DivideOp : public Op
 {
 public:
     // Constructor for DivideOp
-    DivideOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    DivideOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "div") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;
@@ -76,7 +77,7 @@ class ExpOp : public Op
 {
 public:
     // Constructor for ExpOp
-    ExpOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    ExpOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "exp") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;
@@ -87,7 +88,7 @@ class TanhOp : public Op
 {
 public:
     // Constructor for TanhOp
-    TanhOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs) {}
+    TanhOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "tanh") {}
 
     // Declare the methods
     VALUE_TYPE forward() override;

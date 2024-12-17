@@ -21,6 +21,8 @@ def main():
     # Example usage of Linear
     x = [Tensor(2.0), Tensor(3.0)]
     n = Layer(2,3)
+
+    
     
     res = n(x)
     for t in res:
