@@ -1,3 +1,5 @@
+// tensor.cpp
+
 #include "tensor.h"
 #include "op.h"
 
@@ -50,6 +52,30 @@ std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other)
     return make_tensor(div_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
 }
 
+std::shared_ptr<Tensor> Tensor::operator+(float scalar)
+{
+    auto scalar_tensor = std::make_shared<Tensor>(scalar);
+    return *this + scalar_tensor;
+}
+
+std::shared_ptr<Tensor> Tensor::operator*(float scalar)
+{
+    auto scalar_tensor = std::make_shared<Tensor>(scalar);
+    return *this * scalar_tensor;
+}
+
+std::shared_ptr<Tensor> Tensor::operator-(float scalar)
+{
+    auto scalar_tensor = std::make_shared<Tensor>(scalar);
+    return *this - scalar_tensor;
+}
+
+std::shared_ptr<Tensor> Tensor::operator/(float scalar)
+{
+    auto scalar_tensor = std::make_shared<Tensor>(scalar);
+    return *this / scalar_tensor;
+}
+
 std::shared_ptr<Tensor> Tensor::tanh()
 {
     auto tanh_op = std::make_shared<TanhOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
@@ -60,6 +86,12 @@ std::shared_ptr<Tensor> Tensor::exp()
 {
     auto exp_op = std::make_shared<ExpOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
     return make_tensor(exp_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+}
+
+std::shared_ptr<Tensor> Tensor::relu()
+{
+    auto relu_op = std::make_shared<ReluOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    return make_tensor(relu_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
 }
 
 void Tensor::backward()
@@ -130,4 +162,26 @@ void Tensor::topological_sort(std::vector<std::shared_ptr<Tensor>> &ordering)
             ordering.push_back(current);
         }
     }
+}
+
+// Global operator overloads implementation
+
+std::shared_ptr<Tensor> operator+(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
+{
+    return a->operator+(b);
+}
+
+std::shared_ptr<Tensor> operator-(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
+{
+    return a->operator-(b);
+}
+
+std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
+{
+    return a->operator*(b);
+}
+
+std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
+{
+    return a->operator/(b);
 }

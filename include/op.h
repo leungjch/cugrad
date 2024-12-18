@@ -95,4 +95,15 @@ public:
     void backward() override;
 };
 
+class ReluOp : public Op
+{
+public:
+    // Constructor for ReluOp
+    ReluOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "relu") {}
+
+    // Declare the methods
+    VALUE_TYPE forward() override;
+    void backward() override;
+};
+
 #endif // OP_H

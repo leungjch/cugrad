@@ -7,37 +7,15 @@
 #include <memory>
 #include "tensor.h"
 #include "nn.h"
-#include "op.h" // Include Op classes
+#include "op.h"
 
 namespace py = pybind11;
 
-// Helper functions for operator overloading
-std::shared_ptr<Tensor> tensor_add(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
-{
-     return a->operator+(b);
-}
-
-std::shared_ptr<Tensor> tensor_sub(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
-{
-     return a->operator-(b);
-}
-
-std::shared_ptr<Tensor> tensor_mul(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
-{
-     return a->operator*(b);
-}
-
-std::shared_ptr<Tensor> tensor_div(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
-{
-     return a->operator/(b);
-}
+// PYBIND11_MODULE remains unchanged as global operator overloads are now defined in C++
 
 PYBIND11_MODULE(cugrad, m)
 {
      m.doc() = "cugrad: A CUDA-based automatic differentiation library";
-
-     // Create the 'tensor' submodule
-     py::module tensor = m.def_submodule("tensor", "Tensor operations and classes");
 
      // Bind the Op base class
      py::class_<Op, std::shared_ptr<Op>>(m, "Op")
@@ -62,6 +40,11 @@ PYBIND11_MODULE(cugrad, m)
      py::class_<TanhOp, Op, std::shared_ptr<TanhOp>>(m, "TanhOp")
          .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
 
+     py::class_<ReluOp, Op, std::shared_ptr<ReluOp>>(m, "ReluOp")
+         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+
+     py::module tensor = m.def_submodule("tensor", "Tensor operations and classes");
+
      // Bind the Tensor class to the 'tensor' submodule
      py::class_<Tensor, std::shared_ptr<Tensor>>(tensor, "Tensor")
          // Constructors
@@ -80,22 +63,21 @@ PYBIND11_MODULE(cugrad, m)
          .def("zero_grad", &Tensor::zero_grad, "Reset gradients to zero")
 
          // Operator Overloads
-         .def("__add__", &tensor_add, py::is_operator())
-         .def("__radd__", &tensor_add, py::is_operator())
-         .def("__sub__", &tensor_sub, py::is_operator())
-         .def("__rsub__", [](const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b) -> std::shared_ptr<Tensor>
-              { return b->operator-(a); }, py::is_operator())
-         .def("__mul__", &tensor_mul, py::is_operator())
-         .def("__rmul__", &tensor_mul, py::is_operator())
-         .def("__truediv__", &tensor_div, py::is_operator())
-         .def("__rtruediv__", [](const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b) -> std::shared_ptr<Tensor>
-              { return b->operator/(a); }, py::is_operator())
+         .def("__add__", &operator+, py::is_operator())
+         .def("__sub__", &operator-, py::is_operator())
+         .def("__mul__", &operator*, py::is_operator())
+         .def("__truediv__", &operator/, py::is_operator())
 
-         // Representation
-         .def("__repr__", [](const Tensor &v)
-              { return "<Tensor data=" + std::to_string(v.data) +
-                       ", grad=" + std::to_string(v.grad) +
-                       ", label=" + v.label + ">"; });
+         // Right hand side operator overloads
+         .def("__radd__", &operator+, py::is_operator())
+         .def("__rsub__", &operator-, py::is_operator())
+         .def("__rmul__", &operator*, py::is_operator())
+         .def("__rtruediv__", &operator/, py::is_operator())
+
+         // Other operations
+         .def("tanh", &Tensor::tanh, "Apply the tanh operation")
+         .def("relu", &Tensor::relu, "Apply the ReLU operation")
+         .def("exp", &Tensor::exp, "Apply the exponential operation");
 
      // Create the 'nn' submodule
      py::module nn = m.def_submodule("nn", "Neural network modules");
@@ -119,6 +101,12 @@ PYBIND11_MODULE(cugrad, m)
 
      // Bind the Layer class to the 'nn' submodule
      py::class_<Layer, Module, std::shared_ptr<Layer>>(nn, "Layer")
-         .def(py::init<int, int>(), py::arg("input_size"), py::arg("output_size"), "Layer constructor")
+         .def(py::init<int, int, bool>(), py::arg("input_size"), py::arg("output_size"), py::arg("nonlin") = true, "Layer constructor")
          .def("__call__", &Layer::operator(), py::arg("input"), "Call operator for the Layer");
+
+     // Bind the MLP class to the 'nn' submodule
+     py::class_<MLP, Module, std::shared_ptr<MLP>>(nn, "MLP")
+         .def(py::init<int, const std::vector<int> &>(), py::arg("input_size"), py::arg("layer_sizes"), "MLP constructor with input size and layer sizes")
+         .def("__call__", &MLP::operator(), py::arg("input"), "Call operator for the MLP")
+         .def("parameters", &MLP::parameters, "Get all parameters of the MLP");
 }

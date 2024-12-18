@@ -189,3 +189,31 @@ void TanhOp::backward()
 
     inputs[0]->grad += (1.0f - tanh(inputs[0]->data) * tanh(inputs[0]->data)) * output->grad;
 }
+
+void ReluOp::backward()
+{
+    // Check that there is exactly one input
+    if (inputs.size() != 1)
+    {
+        throw std::invalid_argument("ReluOp::backward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+    }
+
+    // Check that output is not null
+    if (!output)
+    {
+        throw std::runtime_error("ReluOp::backward - Output tensor is null.");
+    }
+
+    inputs[0]->grad += (inputs[0]->data > 0.0f) ? output->grad : 0.0f;
+}
+
+VALUE_TYPE ReluOp::forward()
+{
+    // Check that there is exactly one input
+    if (inputs.size() != 1)
+    {
+        throw std::invalid_argument("ReluOp::forward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+    }
+
+    return (inputs[0]->data > 0.0f) ? inputs[0]->data : 0.0f;
+}

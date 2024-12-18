@@ -31,7 +31,13 @@ public:
     std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &other);
     std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &other);
 
+    std::shared_ptr<Tensor> operator+(float scalar);
+    std::shared_ptr<Tensor> operator*(float scalar);
+    std::shared_ptr<Tensor> operator-(float scalar);
+    std::shared_ptr<Tensor> operator/(float scalar);
+
     std::shared_ptr<Tensor> tanh();
+    std::shared_ptr<Tensor> relu();
     std::shared_ptr<Tensor> exp();
 
     // Backward Pass
@@ -46,5 +52,11 @@ public:
     // Friend function for ostream
     friend std::ostream &operator<<(std::ostream &os, const Tensor &tensor);
 };
+
+// Global operator overloads for std::shared_ptr<Tensor>
+std::shared_ptr<Tensor> operator+(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b);
+std::shared_ptr<Tensor> operator-(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b);
+std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b);
+std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b);
 
 #endif // TENSOR_H

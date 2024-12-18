@@ -1,9 +1,11 @@
+// nn.h
+
 #ifndef NN_H
 #define NN_H
 
 #include <iostream>
 #include <vector>
-
+#include <memory>
 #include "tensor.h"
 #include "op.h"
 
@@ -43,29 +45,24 @@ public:
 class Layer : public Module
 {
 public:
-    Layer(int in_features, int out_features);
+    Layer(int in_features, int out_features, bool nonlin = true); // Added nonlin parameter
 
     std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) override;
     std::vector<std::shared_ptr<Tensor>> parameters() override;
 
-    std::vector<std::shared_ptr<Tensor>> weights;
-    std::shared_ptr<Tensor> bias;
     int in_features;
     int out_features;
-    std::vector<std::shared_ptr<Tensor>> outputs;
+    bool nonlin;
     std::vector<std::shared_ptr<Neuron>> neurons;
 };
 
 class MLP : public Module
 {
 public:
-    MLP(int in_features, int out_features);
+    MLP(int input_size, const std::vector<int> &layer_sizes);
 
     std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) override;
     std::vector<std::shared_ptr<Tensor>> parameters() override;
-
-    std::shared_ptr<Layer> hidden;
-    std::shared_ptr<Layer> output;
 
     std::vector<std::shared_ptr<Layer>> layers;
 };
