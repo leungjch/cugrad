@@ -1,0 +1,104 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      CUDA_VERSION: 12.2  # Specify the CUDA version you need
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      # Step 3: Install prerequisites
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake wget gnupg
+
+      # Step 4: Install CUDA Toolkit using cuda-keyring
+      - name: Install CUDA Toolkit
+        run: |
+          # Download the cuda-keyring package
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+          # Install the cuda-keyring package
+          sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          # Update apt repositories
+          sudo apt-get update
+          # Install the specified CUDA toolkit version
+          sudo apt-get -y install cuda-toolkit-${{ env.CUDA_VERSION }}
+
+      # Step 5: Install pybind11 development package
+      - name: Install pybind11
+        run: |
+          sudo apt-get install -y pybind11-dev
+
+      # Step 6: Set CUDA environment variables
+      - name: Set CUDA environment variables
+        run: |
+          echo "CUDA_HOME=/usr/local/cuda-${{ env.CUDA_VERSION }}" >> $GITHUB_ENV
+          echo "/usr/local/cuda-${{ env.CUDA_VERSION }}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-${{ env.CUDA_VERSION }}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      # Step 7: Verify CUDA installation
+      - name: Verify CUDA installation
+        run: |
+          nvcc --version
+          # nvidia-smi is typically not available on GitHub's virtual environments
+          # Attempting to run it will fail, so we catch the error
+          if ! command -v nvidia-smi &> /dev/null
+          then
+              echo "nvidia-smi could not be found. GPU access is not available."
+          else
+              nvidia-smi
+          fi
+
+      # Step 8: Upgrade pip
+      - name: Upgrade pip
+        run: pip install --upgrade pip
+
+      # Step 9: Install build dependencies
+      - name: Install build dependencies
+        run: pip install .
+
+      # Step 10: Configure CMake
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=$(which python)
+
+      # Step 11: Build with CMake
+      - name: Build with CMake
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      # Step 12: Run unit tests
+      - name: Run unit tests
+        run: |
+          cd build
+          python -m unittest discover ../tests
+
+      # (Optional) Step 13: Cache pip dependencies
+      # - name: Cache pip
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.cache/pip
+      #     key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pip-

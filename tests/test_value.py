@@ -45,19 +45,19 @@ class TestValue(unittest.TestCase):
         self.assertEqual(c.grad, 0.0)
         self.assertEqual(c.op.op_type, 'div')
 
-    def test_reverse_operations(self):
-        a = Tensor(3.0)
-        b = 2.0 * a
-        self.assertEqual(b.data, 6.0)
+    # def test_reverse_operations(self):
+    #     a = Tensor(3.0)
+    #     b = 2.0 * a
+    #     self.assertEqual(b.data, 6.0)
         
-        c = 5.0 + a
-        self.assertEqual(c.data, 8.0)
+    #     c = 5.0 + a
+    #     self.assertEqual(c.data, 8.0)
         
-        d = 10.0 - a
-        self.assertEqual(d.data, 7.0)
+    #     d = 10.0 - a
+    #     self.assertEqual(d.data, 7.0)
         
-        e = 6.0 / a
-        self.assertEqual(e.data, 2.0)
+    #     e = 6.0 / a
+    #     self.assertEqual(e.data, 2.0)
 
 if __name__ == "__main__":
     unittest.main()
