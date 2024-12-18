@@ -1,0 +1,73 @@
+name: Test
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+
+jobs:
+  test:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    env:
+      CUDA_VERSION: 12.2
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake wget gnupg
+
+      - name: Install CUDA Toolkit
+        run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+          sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          sudo apt-get update
+          sudo apt-get -y install cuda-toolkit-${{ env.CUDA_VERSION }}
+
+      - name: Install pybind11
+        run: |
+          sudo apt-get install -y pybind11-dev
+
+      - name: Set CUDA environment variables
+        run: |
+          echo "CUDA_HOME=/usr/local/cuda-${{ env.CUDA_VERSION }}" >> $GITHUB_ENV
+          echo "/usr/local/cuda-${{ env.CUDA_VERSION }}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-${{ env.CUDA_VERSION }}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      - name: Verify CUDA installation
+        run: |
+          nvcc --version
+          if ! command -v nvidia-smi &> /dev/null
+          then
+              echo "nvidia-smi could not be found. GPU access is not available."
+          else
+              nvidia-smi
+          fi
+
+      - name: Upgrade pip
+        run: pip install --upgrade pip
+
+      - name: Install build dependencies
+        run: pip install .
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+          path: build/
+
+      - name: Run unit tests
+        run: |
+          cd build
+          python -m unittest discover ../tests
