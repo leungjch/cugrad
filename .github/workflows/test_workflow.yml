@@ -1,14 +1,21 @@
 name: Test
 
 on:
-  workflow_run:
-    workflows: ["Build"]
-    types:
-      - completed
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
+  build:
+    uses: ./.github/workflows/build_workflow.yml
+    with:
+      cuda_version: '12.2'
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: build
     runs-on: ubuntu-latest
 
     env:
@@ -26,7 +33,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake wget gnupg
+          sudo apt-get install -y build-essential cmake wget gnupg unzip
 
       - name: Install CUDA Toolkit
         run: |
