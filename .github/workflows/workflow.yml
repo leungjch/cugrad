@@ -1,22 +1,17 @@
-name: Build
+name: Build and Test
 
 on:
-  workflow_call:
-    inputs:
-      cuda_version:
-        description: 'CUDA version to install'
-        required: true
-        type: string
-    secrets:
-      GITHUB_TOKEN:
-        required: true
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     env:
-      CUDA_VERSION: ${{ inputs.cuda_version }}
+      CUDA_VERSION: 12.2 
 
     steps:
       - name: Checkout repository
@@ -34,9 +29,13 @@ jobs:
 
       - name: Install CUDA Toolkit
         run: |
+          # Download the cuda-keyring package
           wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+          # Install the cuda-keyring package
           sudo dpkg -i cuda-keyring_1.0-1_all.deb
+          # Update apt repositories
           sudo apt-get update
+          # Install the specified CUDA toolkit version
           sudo apt-get -y install cuda-toolkit-${{ env.CUDA_VERSION }}
 
       - name: Install pybind11
@@ -52,6 +51,8 @@ jobs:
       - name: Verify CUDA installation
         run: |
           nvcc --version
+          # nvidia-smi is typically not available on GitHub's virtual environments
+          # Attempting to run it will fail, so we catch the error
           if ! command -v nvidia-smi &> /dev/null
           then
               echo "nvidia-smi could not be found. GPU access is not available."
@@ -76,8 +77,16 @@ jobs:
           cd build
           cmake --build . --config Release
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: build/
+      - name: Run unit tests
+        run: |
+          cd build
+          python -m unittest discover ../tests
+
+      # (Optional): Cache pip dependencies
+      # - name: Cache pip
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.cache/pip
+      #     key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pip-
