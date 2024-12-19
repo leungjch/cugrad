@@ -12,7 +12,6 @@
 class Module
 {
 public:
-    virtual std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) = 0;
     virtual void zero_grad()
     {
         for (auto &param : parameters())
@@ -23,6 +22,8 @@ public:
 
     // Pure virtual method to retrieve parameters
     virtual std::vector<std::shared_ptr<Tensor>> parameters() = 0;
+    // Forward pass
+    virtual std::shared_ptr<Tensor> operator()(std::shared_ptr<Tensor> input) = 0;
 
     virtual ~Module() {}
 };
@@ -32,10 +33,10 @@ class Neuron : public Module
 public:
     Neuron(int in_features, bool nonlin = true);
 
-    std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) override;
+    std::shared_ptr<Tensor> operator()(std::shared_ptr<Tensor> input) override;
     std::vector<std::shared_ptr<Tensor>> parameters() override;
 
-    std::vector<std::shared_ptr<Tensor>> weights;
+    std::shared_ptr<Tensor> weights;
     std::shared_ptr<Tensor> bias;
     std::shared_ptr<Op> activation;
     int in_features;
@@ -46,8 +47,7 @@ class Layer : public Module
 {
 public:
     Layer(int in_features, int out_features, bool nonlin = true); // Added nonlin parameter
-
-    std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) override;
+    std::shared_ptr<Tensor> operator()(std::shared_ptr<Tensor> input) override;
     std::vector<std::shared_ptr<Tensor>> parameters() override;
 
     int in_features;
@@ -60,8 +60,7 @@ class MLP : public Module
 {
 public:
     MLP(int input_size, const std::vector<int> &layer_sizes);
-
-    std::vector<std::shared_ptr<Tensor>> operator()(std::vector<std::shared_ptr<Tensor>> input) override;
+    std::shared_ptr<Tensor> operator()(std::shared_ptr<Tensor> input) override;
     std::vector<std::shared_ptr<Tensor>> parameters() override;
 
     std::vector<std::shared_ptr<Layer>> layers;

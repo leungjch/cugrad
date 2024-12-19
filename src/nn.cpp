@@ -18,47 +18,41 @@ float make_random()
 
 Neuron::Neuron(int in_features, bool nonlin) : in_features(in_features), nonlin(nonlin)
 {
-    // Initialize the weights and bias with random values
-    weights.resize(in_features);
+    weights = std::make_shared<Tensor>(std::vector<int>{in_features});
+    // Fill weights->data with random values
     for (int i = 0; i < in_features; i++)
     {
-        weights[i] = std::make_shared<Tensor>(make_random());
+        weights->data[i] = make_random();
     }
-    bias = std::make_shared<Tensor>(make_random());
+
+    bias = std::make_shared<Tensor>(std::vector<int>{1});
+    bias->data[0] = make_random();
 }
 
-std::vector<std::shared_ptr<Tensor>> Neuron::operator()(std::vector<std::shared_ptr<Tensor>> input)
+std::shared_ptr<Tensor> Neuron::operator()(std::shared_ptr<Tensor> input)
 {
-    if (weights.size() != input.size())
+    // Input must have shape [in_features]
+    if (input->shape.size() != 1 || input->shape[0] != in_features)
     {
-        throw std::invalid_argument("Input size does not match weights size.");
+        throw std::invalid_argument("Input to Neuron must have shape [in_features]");
     }
 
-    // Forward pass: w * x + b using Tensor operations
-    // Start with bias
-    std::shared_ptr<Tensor> sm = bias;
+    // Output = bias + sum(input * weights)
+    auto prod = input * weights; // shape [in_features]
+    auto summed = prod->sum();   // shape [1]
+    auto out = summed + bias;    // shape [1]
 
-    // Accumulate w * x
-    for (int i = 0; i < in_features; i++)
-    {
-        sm = sm + (input[i] * weights[i]);
-    }
-
-    // Apply activation if needed
     if (nonlin)
     {
-        sm = sm->tanh();
+        out = out->tanh();
     }
 
-    sm->label = "Neuron";
-    return {sm};
+    return out; // A single Tensor of shape [1]
 }
 
 std::vector<std::shared_ptr<Tensor>> Neuron::parameters()
 {
-    std::vector<std::shared_ptr<Tensor>> params = weights;
-    params.push_back(bias);
-    return params;
+    return {weights, bias};
 }
 
 Layer::Layer(int in_features, int out_features, bool nonlin) : in_features(in_features), out_features(out_features), nonlin(nonlin)
@@ -71,16 +65,24 @@ Layer::Layer(int in_features, int out_features, bool nonlin) : in_features(in_fe
     }
 }
 
-std::vector<std::shared_ptr<Tensor>> Layer::operator()(std::vector<std::shared_ptr<Tensor>> input)
+std::shared_ptr<Tensor> Layer::operator()(std::shared_ptr<Tensor> input)
 {
-    std::vector<std::shared_ptr<Tensor>> outputs;
-    outputs.reserve(out_features);
-    for (auto &neuron : neurons)
+    std::vector<std::shared_ptr<Tensor>> neuron_outputs;
+    neuron_outputs.reserve(out_features);
+
+    for (int i = 0; i < out_features; i++)
     {
-        auto neuron_output = (*neuron)(input);
-        outputs.insert(outputs.end(), neuron_output.begin(), neuron_output.end());
+        // Each neuron returns a [1]-shaped tensor.
+        auto neuron_output = (*neurons[i])(input);
+        neuron_outputs.push_back(neuron_output);
     }
-    return outputs;
+
+    // Use StackOp to combine these into a single [out_features]-shaped tensor
+    auto stack_op = std::make_shared<StackOp>(neuron_outputs);
+    stack_op->forward();
+    // stack_op->forward() sets stack_op->output
+
+    return stack_op->output; // This output now has a proper op and children set
 }
 
 std::vector<std::shared_ptr<Tensor>> Layer::parameters()
@@ -110,7 +112,7 @@ MLP::MLP(int input_size, const std::vector<int> &layer_sizes)
     }
 }
 
-std::vector<std::shared_ptr<Tensor>> MLP::operator()(std::vector<std::shared_ptr<Tensor>> input)
+std::shared_ptr<Tensor> MLP::operator()(std::shared_ptr<Tensor> input)
 {
     auto x = input;
     for (auto &layer : layers)
