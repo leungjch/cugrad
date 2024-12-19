@@ -12,10 +12,10 @@
 
 class Tensor; // Forward declaration
 
-class Op
+class Op : public std::enable_shared_from_this<Op>
 {
 public:
-    virtual VALUE_TYPE forward() = 0;
+    virtual void forward() = 0;
     virtual void backward() = 0;
 
     Op(const std::vector<std::shared_ptr<Tensor>> &inputs, std::string op_type = "") : inputs(inputs), op_type(op_type)
@@ -36,7 +36,7 @@ public:
     AddOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "add") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -47,7 +47,7 @@ public:
     SubtractOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "sub") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -58,7 +58,7 @@ public:
     MultiplyOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "mul") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -69,7 +69,7 @@ public:
     DivideOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "div") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -80,7 +80,7 @@ public:
     ExpOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "exp") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -91,7 +91,7 @@ public:
     TanhOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "tanh") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
     void backward() override;
 };
 
@@ -102,7 +102,26 @@ public:
     ReluOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "relu") {}
 
     // Declare the methods
-    VALUE_TYPE forward() override;
+    void forward() override;
+    void backward() override;
+};
+
+class SumOp : public Op
+{
+public:
+    SumOp(const std::vector<std::shared_ptr<Tensor>> &inputs) : Op(inputs, "sum") {}
+    void forward() override;
+    void backward() override;
+};
+
+class StackOp : public Op
+{
+public:
+    // Constructor: pass a list of single-value tensors.
+    StackOp(const std::vector<std::shared_ptr<Tensor>> &inputs)
+        : Op(inputs, "stack") {}
+
+    void forward() override;
     void backward() override;
 };
 

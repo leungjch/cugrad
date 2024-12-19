@@ -1,219 +1,244 @@
 #include <math.h>
-#include <stdexcept> // Include for standard exception types
-
+#include <stdexcept>
 #include "op.h"
-#include "tensor.h" // Now Tensor is fully defined
+#include "tensor.h"
 
-// Define AddOp's forward method
-VALUE_TYPE AddOp::forward()
+static void check_same_shape_for_binary(const std::vector<std::shared_ptr<Tensor>> &inputs)
 {
-    // Check that there are exactly two inputs
     if (inputs.size() != 2)
     {
-        throw std::invalid_argument("AddOp::forward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        throw std::invalid_argument("Binary op expected 2 inputs, got " + std::to_string(inputs.size()));
     }
-
-    return inputs[0]->data + inputs[1]->data;
+    if (inputs[0]->shape != inputs[1]->shape)
+    {
+        throw std::invalid_argument("Binary op shapes must match.");
+    }
 }
 
-// Define AddOp's backward method
+static void check_one_input(const std::vector<std::shared_ptr<Tensor>> &inputs)
+{
+    if (inputs.size() != 1)
+    {
+        throw std::invalid_argument("Unary op expected 1 input, got " + std::to_string(inputs.size()));
+    }
+}
+
+void AddOp::forward()
+{
+    check_same_shape_for_binary(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
+    {
+        output->data[i] = inputs[0]->data[i] + inputs[1]->data[i];
+    }
+    output->op = shared_from_this();
+    output->children = inputs;
+}
+
 void AddOp::backward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("AddOp::backward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        inputs[0]->grad[i] += output->grad[i];
+        inputs[1]->grad[i] += output->grad[i];
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("AddOp::backward - Output tensor is null.");
-    }
-
-    inputs[0]->grad += output->grad;
-    inputs[1]->grad += output->grad;
 }
 
-VALUE_TYPE SubtractOp::forward()
+void SubtractOp::forward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    check_same_shape_for_binary(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("SubtractOp::forward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        output->data[i] = inputs[0]->data[i] - inputs[1]->data[i];
     }
-
-    return inputs[0]->data - inputs[1]->data;
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void SubtractOp::backward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("SubtractOp::backward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        inputs[0]->grad[i] += output->grad[i];
+        inputs[1]->grad[i] -= output->grad[i];
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("SubtractOp::backward - Output tensor is null.");
-    }
-
-    inputs[0]->grad += output->grad;
-    inputs[1]->grad -= output->grad;
 }
 
-VALUE_TYPE MultiplyOp::forward()
+void MultiplyOp::forward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    check_same_shape_for_binary(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("MultiplyOp::forward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        output->data[i] = inputs[0]->data[i] * inputs[1]->data[i];
     }
-
-    return inputs[0]->data * inputs[1]->data;
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void MultiplyOp::backward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("MultiplyOp::backward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        inputs[0]->grad[i] += inputs[1]->data[i] * output->grad[i];
+        inputs[1]->grad[i] += inputs[0]->data[i] * output->grad[i];
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("MultiplyOp::backward - Output tensor is null.");
-    }
-
-    inputs[0]->grad += inputs[1]->data * output->grad;
-    inputs[1]->grad += inputs[0]->data * output->grad;
 }
 
-VALUE_TYPE DivideOp::forward()
+void DivideOp::forward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    check_same_shape_for_binary(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("DivideOp::forward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        if (inputs[1]->data[i] == 0.0f)
+        {
+            throw std::domain_error("DivideOp::forward - Division by zero at index " + std::to_string(i));
+        }
+        output->data[i] = inputs[0]->data[i] / inputs[1]->data[i];
     }
-
-    // Additional check to prevent division by zero
-    if (inputs[1]->data == 0.0f)
-    {
-        throw std::domain_error("DivideOp::forward - Division by zero.");
-    }
-
-    return inputs[0]->data / inputs[1]->data;
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void DivideOp::backward()
 {
-    // Check that there are exactly two inputs
-    if (inputs.size() != 2)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("DivideOp::backward - Expected 2 inputs, received " + std::to_string(inputs.size()) + ".");
+        float a = inputs[0]->data[i];
+        float b = inputs[1]->data[i];
+        if (b == 0.0f)
+        {
+            throw std::domain_error("DivideOp::backward - Division by zero in gradient calculation at index " + std::to_string(i));
+        }
+        inputs[0]->grad[i] += output->grad[i] / b;
+        inputs[1]->grad[i] -= (a * output->grad[i]) / (b * b);
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("DivideOp::backward - Output tensor is null.");
-    }
-
-    // Additional check to prevent division by zero in gradient calculation
-    if (inputs[1]->data == 0.0f)
-    {
-        throw std::domain_error("DivideOp::backward - Division by zero in gradient calculation.");
-    }
-
-    inputs[0]->grad += output->grad / inputs[1]->data;
-    inputs[1]->grad -= (inputs[0]->data * output->grad) / (inputs[1]->data * inputs[1]->data);
 }
 
-VALUE_TYPE ExpOp::forward()
+void ExpOp::forward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    check_one_input(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("ExpOp::forward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        output->data[i] = std::exp(inputs[0]->data[i]);
     }
-
-    return exp(inputs[0]->data);
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void ExpOp::backward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("ExpOp::backward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        inputs[0]->grad[i] += std::exp(inputs[0]->data[i]) * output->grad[i];
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("ExpOp::backward - Output tensor is null.");
-    }
-
-    inputs[0]->grad += exp(inputs[0]->data) * output->grad;
 }
 
-VALUE_TYPE TanhOp::forward()
+void TanhOp::forward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    check_one_input(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("TanhOp::forward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        output->data[i] = std::tanh(inputs[0]->data[i]);
     }
-
-    return tanh(inputs[0]->data);
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void TanhOp::backward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("TanhOp::backward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        float t = std::tanh(inputs[0]->data[i]);
+        inputs[0]->grad[i] += (1.0f - t * t) * output->grad[i];
     }
+}
 
-    // Check that output is not null
-    if (!output)
+void ReluOp::forward()
+{
+    check_one_input(inputs);
+    output = std::make_shared<Tensor>(inputs[0]->shape);
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::runtime_error("TanhOp::backward - Output tensor is null.");
+        output->data[i] = (inputs[0]->data[i] > 0.0f) ? inputs[0]->data[i] : 0.0f;
     }
-
-    inputs[0]->grad += (1.0f - tanh(inputs[0]->data) * tanh(inputs[0]->data)) * output->grad;
+    output->op = shared_from_this();
+    output->children = inputs;
 }
 
 void ReluOp::backward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    int sz = output->size();
+    for (int i = 0; i < sz; i++)
     {
-        throw std::invalid_argument("ReluOp::backward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        inputs[0]->grad[i] += (inputs[0]->data[i] > 0.0f) ? output->grad[i] : 0.0f;
     }
-
-    // Check that output is not null
-    if (!output)
-    {
-        throw std::runtime_error("ReluOp::backward - Output tensor is null.");
-    }
-
-    inputs[0]->grad += (inputs[0]->data > 0.0f) ? output->grad : 0.0f;
 }
 
-VALUE_TYPE ReluOp::forward()
+void SumOp::forward()
 {
-    // Check that there is exactly one input
-    if (inputs.size() != 1)
+    check_one_input(inputs);
+    auto in = inputs[0];
+    output = std::make_shared<Tensor>(std::vector<int>{1});
+    float total = 0.0f;
+    for (auto v : in->data)
+        total += v;
+    output->data[0] = total;
+    output->op = shared_from_this();
+    output->children = inputs;
+}
+
+void SumOp::backward()
+{
+    auto in = inputs[0];
+    float grad_val = output->grad[0];
+    for (auto &g : in->grad)
     {
-        throw std::invalid_argument("ReluOp::forward - Expected 1 input, received " + std::to_string(inputs.size()) + ".");
+        g += grad_val;
+    }
+}
+
+void StackOp::forward()
+{
+    // Suppose each input is shape [1]. The output is shape [N], where N = inputs.size().
+    int N = (int)inputs.size();
+    output = std::make_shared<Tensor>(std::vector<int>{N});
+
+    for (int i = 0; i < N; i++)
+    {
+        // Copy the single value from inputs[i] into output->data[i]
+        // inputs[i]->data[0] should exist since it's shape [1]
+        output->data[i] = inputs[i]->data[0];
     }
 
-    return (inputs[0]->data > 0.0f) ? inputs[0]->data : 0.0f;
+    output->op = shared_from_this();
+    output->children = inputs; // Now autograd knows the output depends on these inputs
+}
+
+void StackOp::backward()
+{
+    // output->grad is shape [N]
+    // We need to give each input[i]->grad[0] = output->grad[i]
+    int N = (int)inputs.size();
+    for (int i = 0; i < N; i++)
+    {
+        inputs[i]->grad[0] += output->grad[i];
+    }
 }

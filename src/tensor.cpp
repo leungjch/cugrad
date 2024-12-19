@@ -11,93 +11,171 @@
 #include "tensor.h"
 #include "op.h"
 
+// Constructs a tensor of given shape with optional initialization
+Tensor::Tensor(const std::vector<int> &shape, float init_val,
+               std::shared_ptr<Op> op,
+               std::vector<std::shared_ptr<Tensor>> children,
+               DeviceType device)
+    : shape(shape), op(op), children(children), device(device)
+{
+    int total_size = 1;
+    for (auto s : shape)
+    {
+        if (s <= 0)
+        {
+            throw std::invalid_argument("All dimensions must be positive.");
+        }
+        total_size *= s;
+    }
+    data.resize(total_size, init_val);
+    grad.resize(total_size, 0.0f);
+}
+
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor)
 {
-    os << "Tensor(" << tensor.data << ", grad=" << tensor.grad << ", label=" << tensor.label << ")";
+    os << "Tensor(shape=[";
+    for (size_t i = 0; i < tensor.shape.size(); i++)
+    {
+        os << tensor.shape[i];
+        if (i < tensor.shape.size() - 1)
+            os << ", ";
+    }
+    os << "], data=[";
+    int sz = tensor.size();
+    for (int i = 0; i < sz; i++)
+    {
+        os << tensor.data[i];
+        if (i < sz - 1)
+            os << ", ";
+    }
+    os << "], grad=[";
+    for (int i = 0; i < sz; i++)
+    {
+        os << tensor.grad[i];
+        if (i < sz - 1)
+            os << ", ";
+    }
+    os << "])";
     return os;
 }
 
-std::shared_ptr<Tensor> make_tensor(std::shared_ptr<Op> op, std::vector<std::shared_ptr<Tensor>> inputs)
+int Tensor::size() const
 {
-    // Perform the forward operation
-    VALUE_TYPE result = op->forward();
-
-    // Create the output tensor
-    auto result_tensor = std::make_shared<Tensor>(result, op, inputs);
-    op->output = result_tensor;
-    return result_tensor;
+    int sz = 1;
+    for (int s : shape)
+    {
+        sz *= s;
+    }
+    return sz;
 }
 
+std::shared_ptr<Tensor> Tensor::scalar_tensor(float val)
+{
+    auto t = std::make_shared<Tensor>(std::vector<int>{1}, val);
+    return t;
+}
+
+// Check that two tensors have the same shape
+void Tensor::check_same_shape(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
+{
+    if (a->shape != b->shape)
+    {
+        throw std::invalid_argument("Shapes must match for this operation.");
+    }
+}
+
+// Implement element-wise ops
 std::shared_ptr<Tensor> Tensor::operator+(const std::shared_ptr<Tensor> &other)
 {
-    auto add_op = std::make_shared<AddOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
-    return make_tensor(add_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    check_same_shape(shared_from_this(), other);
+    // Create AddOp etc. Here assume we have AddOp adapted for arrays
+    std::shared_ptr<Op> add_op = std::make_shared<AddOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    // AddOp forward will fill the output->data
+    add_op->forward();
+    return add_op->output;
 }
 
 std::shared_ptr<Tensor> Tensor::operator-(const std::shared_ptr<Tensor> &other)
 {
-    auto sub_op = std::make_shared<SubtractOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
-    return make_tensor(sub_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    check_same_shape(shared_from_this(), other);
+    std::shared_ptr<Op> sub_op = std::make_shared<SubtractOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    sub_op->forward();
+    return sub_op->output;
 }
 
 std::shared_ptr<Tensor> Tensor::operator*(const std::shared_ptr<Tensor> &other)
 {
-    auto mul_op = std::make_shared<MultiplyOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
-    return make_tensor(mul_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    check_same_shape(shared_from_this(), other);
+    std::shared_ptr<Op> mul_op = std::make_shared<MultiplyOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    mul_op->forward();
+    return mul_op->output;
 }
 
 std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other)
 {
-    auto div_op = std::make_shared<DivideOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
-    return make_tensor(div_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    check_same_shape(shared_from_this(), other);
+    std::shared_ptr<Op> div_op = std::make_shared<DivideOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this(), other});
+    div_op->forward();
+    return div_op->output;
 }
 
+// Scalar operations: create a scalar tensor with the same shape and then do element-wise op
 std::shared_ptr<Tensor> Tensor::operator+(float scalar)
 {
-    auto scalar_tensor = std::make_shared<Tensor>(scalar);
-    return *this + scalar_tensor;
-}
-
-std::shared_ptr<Tensor> Tensor::operator*(float scalar)
-{
-    auto scalar_tensor = std::make_shared<Tensor>(scalar);
-    return *this * scalar_tensor;
+    auto s = scalar_tensor(scalar);
+    return (*this) + s;
 }
 
 std::shared_ptr<Tensor> Tensor::operator-(float scalar)
 {
-    auto scalar_tensor = std::make_shared<Tensor>(scalar);
-    return *this - scalar_tensor;
+    auto s = scalar_tensor(scalar);
+    return (*this) - s;
+}
+
+std::shared_ptr<Tensor> Tensor::operator*(float scalar)
+{
+    auto s = scalar_tensor(scalar);
+    return (*this) * s;
 }
 
 std::shared_ptr<Tensor> Tensor::operator/(float scalar)
 {
-    auto scalar_tensor = std::make_shared<Tensor>(scalar);
-    return *this / scalar_tensor;
+    auto s = scalar_tensor(scalar);
+    return (*this) / s;
 }
 
 std::shared_ptr<Tensor> Tensor::tanh()
 {
-    auto tanh_op = std::make_shared<TanhOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
-    return make_tensor(tanh_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
-}
-
-std::shared_ptr<Tensor> Tensor::exp()
-{
-    auto exp_op = std::make_shared<ExpOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
-    return make_tensor(exp_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    std::shared_ptr<Op> tanh_op = std::make_shared<TanhOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    tanh_op->forward();
+    return tanh_op->output;
 }
 
 std::shared_ptr<Tensor> Tensor::relu()
 {
-    auto relu_op = std::make_shared<ReluOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
-    return make_tensor(relu_op, std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    std::shared_ptr<Op> relu_op = std::make_shared<ReluOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    relu_op->forward();
+    return relu_op->output;
+}
+
+std::shared_ptr<Tensor> Tensor::exp()
+{
+    std::shared_ptr<Op> exp_op = std::make_shared<ExpOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    exp_op->forward();
+    return exp_op->output;
+}
+
+std::shared_ptr<Tensor> Tensor::sum()
+{
+    auto op_ = std::make_shared<SumOp>(std::vector<std::shared_ptr<Tensor>>{shared_from_this()});
+    op_->forward();
+    return op_->output;
 }
 
 void Tensor::backward()
 {
     // Initialize the gradient of the output tensor to 1.0
-    grad = 1.0;
+    std::fill(grad.begin(), grad.end(), 1.0);
 
     // Get the topological ordering of the compute graph
     std::vector<std::shared_ptr<Tensor>> ordering;
@@ -117,7 +195,7 @@ void Tensor::backward()
 
 void Tensor::zero_grad()
 {
-    grad = 0.0;
+    std::fill(grad.begin(), grad.end(), 0.0);
 
     // Recursively zero the gradients of the children
     for (auto child : children)

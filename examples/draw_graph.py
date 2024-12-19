@@ -15,12 +15,12 @@ def draw_compute_graph(tensor, filename="compute_graph", format="png"):
 
     # Define colors for different operations
     op_colors = {
-        "Add": "lightblue",
-        "Subtract": "lightgreen",
-        "Multiply": "orange",
-        "Divide": "pink",
-        "Exp": "yellow",
-        "Tanh": "purple",
+        "add": "lightblue",
+        "sub": "lightgreen",
+        "mul": "orange",
+        "div": "pink",
+        "exp": "yellow",
+        "tanh": "salmon",
         # Add more operations and colors as needed
     }
 
@@ -32,8 +32,11 @@ def draw_compute_graph(tensor, filename="compute_graph", format="png"):
         tensor_node = f"tensor_{current_id}"
         tensor_id_to_node[id(tensor)] = tensor_node
 
+        def format(li):
+            return '[' +  ','.join(f"{x:.2f}" for x in li) + ']'
+
         # Node label includes label, data, grad
-        label = f"{tensor.label}\nData: {tensor.data:.2f}\nGrad: {tensor.grad:.2f}"
+        label = f"{tensor.label}\nData: {format(tensor.data)}\nGrad: {format(tensor.grad)}"
         dot.node(tensor_node, label=label, shape='ellipse')
 
         if tensor.op:
@@ -55,5 +58,8 @@ def draw_compute_graph(tensor, filename="compute_graph", format="png"):
                 dot.edge(child_node, op_node)
 
     add_nodes(tensor)
-    dot.render(filename, view=False)
+    # Make it large and high dpi
+    dot.attr(size='20,20')
+    dot.attr(dpi='800')
+    dot.render(filename=filename, format=format, cleanup=True)
     print(f"Computation graph saved as {filename}.{format}")
