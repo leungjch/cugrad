@@ -32,7 +32,6 @@ class TestGradients(unittest.TestCase):
         self.assertAlmostEqual(a.grad[0], 1.0 - math.tanh(0.0)**2)
 
     def test_gradient_mlp(self):
-        # Assume MLP now handles arrays properly.
         from cugrad.nn import MLP
         model = MLP(input_size=2, layer_sizes=[2, 1])
 

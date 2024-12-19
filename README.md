@@ -2,6 +2,8 @@
 
 [![Build and Test](https://github.com/leungjch/cugrad/actions/workflows/workflow.yml/badge.svg)](https://github.com/leungjch/cugrad/actions/workflows/workflow.yml)
 
+![](examples/graphs/layer_compute_graph.png)
+
 cugrad is a simple automatic differentiation library written in C++ with Python bindings resembling the PyTorch API. It supports CPU and CUDA backends.
 
 The engine is a C++ extension of [Andrej Karpathy's micrograd](https://github.com/karpathy/micrograd), adding multidimensional tensor support and CUDA. This is mainly a learning project to understand how automatic differentiation and GPU acceleration works from scratch and not intended for production use.

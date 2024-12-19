@@ -12,8 +12,6 @@
 
 namespace py = pybind11;
 
-// PYBIND11_MODULE remains unchanged as global operator overloads are now defined in C++
-
 PYBIND11_MODULE(cugrad, m)
 {
     m.doc() = "cugrad: A CUDA-based automatic differentiation library";

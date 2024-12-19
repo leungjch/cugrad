@@ -229,13 +229,11 @@ void StackOp::forward()
     }
 
     output->op = shared_from_this();
-    output->children = inputs; // Now autograd knows the output depends on these inputs
+    output->children = inputs;
 }
 
 void StackOp::backward()
 {
-    // output->grad is shape [N]
-    // We need to give each input[i]->grad[0] = output->grad[i]
     int N = (int)inputs.size();
     for (int i = 0; i < N; i++)
     {
