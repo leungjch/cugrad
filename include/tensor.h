@@ -4,6 +4,7 @@
 #include "value.h"
 #include "op.h"
 #include "device.h"
+#include "device_manager.h"
 
 #include <iostream>
 #include <vector>
@@ -18,24 +19,28 @@ public:
     std::vector<float> data;
     std::vector<float> grad;
 
+    // For CUDA support
+    float *d_data = nullptr;
+    float *d_grad = nullptr;
+
     DeviceType device;
 
     std::string label;                             // Label for debugging
     std::shared_ptr<Op> op;                        // Operation that created this Tensor
     std::vector<std::shared_ptr<Tensor>> children; // Children tensors
 
-    Tensor() : device(DeviceType::CPU), op(nullptr)
+    Tensor()
     {
         shape = {1};
         data.resize(1, 0.0f);
         grad.resize(1, 0.0f);
+        device = DeviceManager::get_instance().get_current_device();
     }
 
-    // Constructors
+    // Custom constructor
     Tensor(const std::vector<int> &shape, float init_val = 0.0f,
            std::shared_ptr<Op> op = nullptr,
-           std::vector<std::shared_ptr<Tensor>> children = {},
-           DeviceType device = DeviceType::CPU);
+           std::vector<std::shared_ptr<Tensor>> children = {});
 
     // Operator Overloads
     std::shared_ptr<Tensor> operator+(const std::shared_ptr<Tensor> &other);
@@ -72,6 +77,14 @@ public:
     static std::shared_ptr<Tensor> scalar_tensor(float val);
 
     int size() const;
+
+    // Allocate on device if CUDA
+    void allocate_memory_on_device();
+
+    // Copy CPU -> GPU, GPU -> CPU methods
+    void to_device(DeviceType new_device);
+    void copy_to_device();
+    void copy_to_host();
 };
 
 // Global operator overloads for std::shared_ptr<Tensor>

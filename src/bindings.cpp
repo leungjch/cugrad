@@ -3,18 +3,33 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 
 #include <memory>
 #include "tensor.h"
 #include "nn.h"
 #include "op.h"
 #include "optimizer.h"
+#include "device_manager.h"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(cugrad, m)
 {
     m.doc() = "cugrad: A CUDA-based automatic differentiation library";
+
+    // Add a function to set the device from Python
+    m.def("set_device", [](DeviceType device)
+          { DeviceManager::get_instance().set_current_device(device); }, py::arg("device"), "Set the current device (CPU or CUDA)");
+
+    m.def("get_device", []()
+          { return DeviceManager::get_instance().get_current_device(); }, "Get the current device");
+
+    // Bind the DeviceType enum
+    py::enum_<DeviceType>(m, "DeviceType")
+        .value("CPU", DeviceType::CPU)
+        .value("CUDA", DeviceType::CUDA)
+        .export_values();
 
     // Bind the Op base class
     py::class_<Op, std::shared_ptr<Op>>(m, "Op")
@@ -45,10 +60,9 @@ PYBIND11_MODULE(cugrad, m)
     py::class_<SumOp, Op, std::shared_ptr<SumOp>>(m, "SumOp")
         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
 
-    py::enum_<DeviceType>(m, "DeviceType")
-        .value("CPU", DeviceType::CPU)
-        .value("CUDA", DeviceType::CUDA)
-        .export_values();
+    // Bind the StackOp class if you've implemented it similarly
+    py::class_<StackOp, Op, std::shared_ptr<StackOp>>(m, "StackOp")
+        .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
 
     py::module tensor = m.def_submodule("tensor", "Tensor operations and classes");
 
@@ -58,14 +72,47 @@ PYBIND11_MODULE(cugrad, m)
         .def(py::init<const std::vector<int> &,
                       float,
                       std::shared_ptr<Op>,
-                      std::vector<std::shared_ptr<Tensor>>,
-                      DeviceType>(),
+                      std::vector<std::shared_ptr<Tensor>>>(),
              py::arg("shape"),
              py::arg("init_val") = 0.0f,
              py::arg("op") = nullptr, // or py::arg("op") = py::none()
-             py::arg("children") = std::vector<std::shared_ptr<Tensor>>(),
-             py::arg("device") = DeviceType::CPU,
-             "Tensor constructor with shape, init_val, op, children, and device")
+             py::arg("children") = std::vector<std::shared_ptr<Tensor>>())
+        // Custom constructor that accepts a NumPy array
+        .def(py::init([](py::array_t<float> arr)
+                      {
+        // Request buffer info from NumPy array
+        py::buffer_info buf = arr.request();
+        int ndim = buf.ndim;
+
+        // Construct shape vector
+        std::vector<int> shape(ndim);
+        for (int i = 0; i < ndim; i++)
+        {
+            shape[i] = static_cast<int>(buf.shape[i]);
+        }
+
+        // Compute size
+        int size = 1;
+        for (auto s : shape)
+        {
+            size *= s;
+        }
+
+        // Create a Tensor with the given shape (initialized to 0.0f)
+        auto t = std::make_shared<Tensor>(shape,
+                                          0.0f,
+                                          nullptr,
+                                          std::vector<std::shared_ptr<Tensor>>());
+
+        // Copy data from the NumPy array into the tensor's data vector
+        float *ptr = static_cast<float *>(buf.ptr);
+        for (int i = 0; i < size; i++)
+        {
+            t->data[i] = ptr[i];
+        }
+
+        return t; }),
+             "Construct a Tensor from a NumPy array")
 
         // Properties
         .def_readwrite("data", &Tensor::data, "Tensor data")
@@ -73,11 +120,17 @@ PYBIND11_MODULE(cugrad, m)
         .def_readwrite("shape", &Tensor::shape, "Shape of the tensor")
         .def_readwrite("children", &Tensor::children, "Child tensors")
         .def_readwrite("label", &Tensor::label, "Label for debugging")
+        .def_readwrite("device", &Tensor::device, "Device type")
         .def_readonly("op", &Tensor::op, "Operation that created this tensor")
 
         // Methods
         .def("backward", &Tensor::backward, "Compute the gradients")
         .def("zero_grad", &Tensor::zero_grad, "Reset gradients to zero")
+
+        // Device methods
+        .def("allocate_memory_on_device", &Tensor::allocate_memory_on_device, "Allocate memory on the device")
+        .def("to_device", &Tensor::to_device, "Move tensor to the specified device")
+        .def("copy_to_device", &Tensor::copy_to_device, "Copy tensor to the device")
 
         // Operator Overloads
         .def("__add__", &operator+, py::is_operator())
@@ -98,7 +151,7 @@ PYBIND11_MODULE(cugrad, m)
 
     py::module optimizer = m.def_submodule("optimizer", "Optimization algorithms");
 
-    // Bind the SDG class
+    // Bind the SGD class
     py::class_<SGD, std::shared_ptr<SGD>>(optimizer, "SGD")
         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &, float>(), py::arg("parameters"), py::arg("lr"), "SGD constructor with parameters and learning rate")
         .def("step", &SGD::step, "Update parameters")

@@ -34,7 +34,7 @@ std::shared_ptr<Tensor> Neuron::operator()(std::shared_ptr<Tensor> input)
     // Input must have shape [in_features]
     if (input->shape.size() != 1 || input->shape[0] != in_features)
     {
-        throw std::invalid_argument("Input to Neuron must have shape [in_features]");
+        throw std::invalid_argument("Input to Neuron must have shape " + std::to_string(in_features) + " but got " + std::to_string(input->shape[0]));
     }
 
     // Output = bias + sum(input * weights)

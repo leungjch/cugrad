@@ -29,8 +29,6 @@ private:
     DeviceType current_device;
     // Singleton pattern
     DeviceManager() : current_device(DeviceType::CPU) {}
-    DeviceManager(DeviceManager const &) = delete;
-    void operator=(DeviceManager const &) = delete;
 };
 
 #endif // DEVICE_MANAGER_H

@@ -2,9 +2,18 @@
 
 import unittest
 from cugrad.tensor import Tensor
+from cugrad import get_device, set_device, DeviceType
 from cugrad.nn import MLP
 from cugrad.optimizer import SGD
 import math
+
+
+
+
+# Set device
+set_device(DeviceType.CUDA)
+
+print("Get device: ", get_device())
 
 # Define the XOR inputs and corresponding targets
 xor_inputs = [

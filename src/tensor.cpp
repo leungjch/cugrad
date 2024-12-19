@@ -8,15 +8,16 @@
 #include <unordered_set>
 #include <algorithm>
 
+#include <cuda_runtime.h>
+
 #include "tensor.h"
 #include "op.h"
 
 // Constructs a tensor of given shape with optional initialization
 Tensor::Tensor(const std::vector<int> &shape, float init_val,
                std::shared_ptr<Op> op,
-               std::vector<std::shared_ptr<Tensor>> children,
-               DeviceType device)
-    : shape(shape), op(op), children(children), device(device)
+               std::vector<std::shared_ptr<Tensor>> children)
+    : shape(shape), op(op), children(children)
 {
     int total_size = 1;
     for (auto s : shape)
@@ -29,6 +30,7 @@ Tensor::Tensor(const std::vector<int> &shape, float init_val,
     }
     data.resize(total_size, init_val);
     grad.resize(total_size, 0.0f);
+    device = DeviceManager::get_instance().get_current_device();
 }
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor)
@@ -262,4 +264,53 @@ std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &a, const std::s
 std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &a, const std::shared_ptr<Tensor> &b)
 {
     return a->operator/(b);
+}
+
+void Tensor::allocate_memory_on_device()
+{
+    if (device == DeviceType::CUDA)
+    {
+        cudaMalloc(&d_data, size() * sizeof(float));
+        cudaMalloc(&d_grad, size() * sizeof(float));
+
+        // Copy to GPU
+        cudaMemcpy(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemset(d_grad, 0, size() * sizeof(float));
+    }
+}
+
+void Tensor::to_device(DeviceType new_device)
+{
+    if (device == new_device)
+    {
+        return;
+    }
+
+    if (new_device == DeviceType::CUDA)
+    {
+        allocate_memory_on_device();
+        copy_to_device();
+    }
+    else
+    {
+        copy_to_host();
+    }
+}
+
+void Tensor::copy_to_device()
+{
+    if (device == DeviceType::CUDA)
+    {
+        cudaMemcpy(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_grad, grad.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+    }
+}
+
+void Tensor::copy_to_host()
+{
+    if (device == DeviceType::CUDA)
+    {
+        cudaMemcpy(data.data(), d_data, size() * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(grad.data(), d_grad, size() * sizeof(float), cudaMemcpyDeviceToHost);
+    }
 }
