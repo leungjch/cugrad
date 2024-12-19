@@ -48,7 +48,6 @@ for epoch in range(epochs):
         input_tensor.data = input_data
 
         output = model(input_tensor)
-        print("data", output.data)
         predictions.append(output)
     
     # Compute loss
@@ -61,11 +60,9 @@ for epoch in range(epochs):
     optimizer.step()
     optimizer.zero_grad()
 
-    
-    
-    # Optionally, print loss every 100 epochs
+    # Print loss every 100 epochs
     if (epoch + 1) % 100 == 0:
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss.data[0]:.4f}")
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.data}")
 
 print("\nTrained Model Predictions:")
 for input_data, target in zip(xor_inputs, xor_targets):
