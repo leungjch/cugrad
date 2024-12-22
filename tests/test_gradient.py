@@ -1,23 +1,23 @@
 import unittest
 from cugrad.tensor import Tensor
+from cugrad import set_device, DeviceType
 import math
+
+
+set_device(DeviceType.CPU)
 
 class TestGradients(unittest.TestCase):
     def test_gradient_addition(self):
-        a = Tensor([1])
-        a.data = [2.0]
-        b = Tensor([1])
-        b.data = [3.0]
+        a = Tensor([2.0])
+        b = Tensor([3.0])
         c = a + b
         c.backward()
         self.assertEqual(a.grad, [1.0])
         self.assertEqual(b.grad, [1.0])
 
     def test_gradient_multiplication(self):
-        a = Tensor([1])
-        a.data = [2.0]
-        b = Tensor([1])
-        b.data = [3.0]
+        a = Tensor([2.0])
+        b = Tensor([3.0])
         c = a * b
         c.backward()
         self.assertEqual(a.grad, [3.0])
@@ -36,10 +36,8 @@ class TestGradients(unittest.TestCase):
         model = MLP(input_size=2, layer_sizes=[2, 1])
 
         # Create dummy input and target
-        inputs = Tensor([2])
-        inputs.data = [1.0, 2.0]
-        target = Tensor([1])
-        target.data = [1.0]
+        inputs = Tensor([1.0, 2.0])
+        target = Tensor([1.0])
 
         output = model(inputs)  # output should be shape [1]
         loss = (output - target)*(output - target)

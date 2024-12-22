@@ -1,5 +1,6 @@
 #include "op_cuda.h"
 #include <cmath>
+#include <iostream>
 
 // A helper for launching kernels
 static inline int getGridSize(int n, int block_size=256) {
@@ -76,7 +77,8 @@ void mul_forward_cuda(const float* a, const float* b, float* out, int size) {
     cudaDeviceSynchronize();
 }
 
-__global__ void mul_backward_kernel(const float* grad_out, const float* a, const float* b, float* grad_a, float* grad_b, int size) {
+__global__ void mul_backward_kernel(const float* grad_out, const float* a, const float* b,
+                                    float* grad_a, float* grad_b, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         grad_a[idx] += grad_out[idx] * b[idx];
@@ -84,7 +86,8 @@ __global__ void mul_backward_kernel(const float* grad_out, const float* a, const
     }
 }
 
-void mul_backward_cuda(const float* grad_out, const float* a, const float* b, float* grad_a, float* grad_b, int size) {
+void mul_backward_cuda(const float* grad_out, const float* a, const float* b,
+                       float* grad_a, float* grad_b, int size) {
     int grid = getGridSize(size);
     mul_backward_kernel<<<grid, 256>>>(grad_out, a, b, grad_a, grad_b, size);
     cudaDeviceSynchronize();
@@ -95,8 +98,7 @@ __global__ void div_forward_kernel(const float* a, const float* b, float* out, i
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         float denom = b[idx];
-        // Assume no zero division as checked in CPU code
-        out[idx] = a[idx] / denom;
+        out[idx] = a[idx] / denom; // assume no zero-division
     }
 }
 
@@ -106,7 +108,8 @@ void div_forward_cuda(const float* a, const float* b, float* out, int size) {
     cudaDeviceSynchronize();
 }
 
-__global__ void div_backward_kernel(const float* grad_out, const float* a, const float* b, float* grad_a, float* grad_b, int size) {
+__global__ void div_backward_kernel(const float* grad_out, const float* a, const float* b,
+                                    float* grad_a, float* grad_b, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         float A = a[idx];
@@ -116,7 +119,8 @@ __global__ void div_backward_kernel(const float* grad_out, const float* a, const
     }
 }
 
-void div_backward_cuda(const float* grad_out, const float* a, const float* b, float* grad_a, float* grad_b, int size) {
+void div_backward_cuda(const float* grad_out, const float* a, const float* b,
+                       float* grad_a, float* grad_b, int size) {
     int grid = getGridSize(size);
     div_backward_kernel<<<grid, 256>>>(grad_out, a, b, grad_a, grad_b, size);
     cudaDeviceSynchronize();
@@ -137,7 +141,6 @@ void exp_forward_cuda(const float* a, float* out, int size) {
 }
 
 __global__ void exp_backward_kernel(const float* grad_out, const float* a, float* grad_a, int size) {
-    // Need to recompute exp(a)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         float val = expf(a[idx]);
@@ -152,8 +155,6 @@ void exp_backward_cuda(const float* grad_out, const float* a, float* grad_a, int
 }
 
 // -------------------- Tanh --------------------
-// We'll assume we have 'out' as the forward output passed to backward for simplicity.
-// If not, you'd need to recompute out = tanh(a[idx]) in backward.
 __global__ void tanh_forward_kernel(const float* a, float* out, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -209,10 +210,7 @@ void relu_backward_cuda(const float* grad_out, const float* a, float* grad_a, in
 }
 
 // -------------------- Sum --------------------
-// forward: sum all elements of a into out[0]
 __global__ void sum_forward_kernel(const float* a, float* out, int size) {
-    // We'll do a simple parallel reduction. For simplicity, we might do a naive approach.
-    // In real code, use a proper reduction for performance.
     __shared__ float sdata[256];
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     float val = 0.0f;
@@ -220,29 +218,28 @@ __global__ void sum_forward_kernel(const float* a, float* out, int size) {
     sdata[threadIdx.x] = val;
     __syncthreads();
 
-    // Reduce within block
-    for (int s = blockDim.x/2; s>0; s>>=1) {
-        if (threadIdx.x < s) {
+    for (int s = blockDim.x / 2; s > 0; s >>= 1)
+    {
+        if (threadIdx.x < s)
+        {
             sdata[threadIdx.x] += sdata[threadIdx.x + s];
         }
         __syncthreads();
     }
 
-    // block 0 accumulates into out[0]
-    if (threadIdx.x == 0) {
+    if (threadIdx.x == 0)
+    {
         atomicAdd(out, sdata[0]);
     }
 }
 
 void sum_forward_cuda(const float* a, float* out, int size) {
-    // Initialize out[0] = 0
     cudaMemset(out, 0, sizeof(float));
     int grid = getGridSize(size);
     sum_forward_kernel<<<grid, 256>>>(a, out, size);
     cudaDeviceSynchronize();
 }
 
-// backward: grad_out is shape [1], spread to all elements of grad_a
 __global__ void sum_backward_kernel(const float* grad_out, float* grad_a, int size) {
     float g = grad_out[0];
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -258,11 +255,8 @@ void sum_backward_cuda(const float* grad_out, float* grad_a, int size) {
 }
 
 // -------------------- Stack --------------------
-// stack forward: inputs is array of pointers, each input shape [1], output shape [num_inputs]
-// For simplicity: we assume inputs pointers are device pointers accessible here.
 __global__ void stack_forward_kernel(const float** inputs, float* out, int num_inputs) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    // each input is scalar. idx < num_inputs
     if (idx < num_inputs) {
         out[idx] = inputs[idx][0];
     }
@@ -274,7 +268,6 @@ void stack_forward_cuda(const float** inputs, float* out, int num_inputs) {
     cudaDeviceSynchronize();
 }
 
-// stack backward: grad_out shape [num_inputs], distribute each grad_out[i] to grad_ins[i][0]
 __global__ void stack_backward_kernel(const float* grad_out, float** grad_ins, int num_inputs) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_inputs) {
@@ -285,5 +278,19 @@ __global__ void stack_backward_kernel(const float* grad_out, float** grad_ins, i
 void stack_backward_cuda(const float* grad_out, float** grad_ins, int num_inputs) {
     int grid = getGridSize(num_inputs);
     stack_backward_kernel<<<grid, 256>>>(grad_out, grad_ins, num_inputs);
+    cudaDeviceSynchronize();
+}
+
+// -------------------- SGD Step --------------------
+__global__ void sgd_step_kernel(float* param, const float* grad, float lr, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        param[idx] -= lr * grad[idx];
+    }
+}
+
+void sgd_step_cuda(float* param, float* grad, float lr, int size) {
+    int grid = getGridSize(size);
+    sgd_step_kernel<<<grid, 256>>>(param, grad, lr, size);
     cudaDeviceSynchronize();
 }

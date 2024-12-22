@@ -1,4 +1,8 @@
+// optimizer.cpp
+
 #include "optimizer.h"
+#include "op_cuda.h"
+
 #include <cstddef> // for size_t
 
 // Optimizer Methods
@@ -28,9 +32,23 @@ void SGD::step()
     for (auto &param : parameters)
     {
         int sz = param->size();
-        for (int i = 0; i < sz; i++)
+        if (param->device == DeviceType::CUDA)
         {
-            param->data[i] -= lr * param->grad[i];
+            // Ensure memory is allocated and data is on the device
+            param->allocate_memory_on_device();
+
+            // Launch CUDA kernel for SGD step
+            sgd_step_cuda(param->d_data, param->d_grad, lr, sz);
+
+            // Optionally, copy updated data back to host if needed
+            // param->copy_to_host();
+        }
+        else // CPU
+        {
+            for (int i = 0; i < sz; i++)
+            {
+                param->data[i] -= lr * param->grad[i];
+            }
         }
     }
 }

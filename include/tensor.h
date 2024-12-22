@@ -29,13 +29,8 @@ public:
     std::shared_ptr<Op> op;                        // Operation that created this Tensor
     std::vector<std::shared_ptr<Tensor>> children; // Children tensors
 
-    Tensor()
-    {
-        shape = {1};
-        data.resize(1, 0.0f);
-        grad.resize(1, 0.0f);
-        device = DeviceManager::get_instance().get_current_device();
-    }
+    Tensor();
+    ~Tensor();
 
     // Custom constructor
     Tensor(const std::vector<int> &shape, float init_val = 0.0f,

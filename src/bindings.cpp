@@ -60,9 +60,11 @@ PYBIND11_MODULE(cugrad, m)
     py::class_<SumOp, Op, std::shared_ptr<SumOp>>(m, "SumOp")
         .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
 
-    // Bind the StackOp class if you've implemented it similarly
     py::class_<StackOp, Op, std::shared_ptr<StackOp>>(m, "StackOp")
-        .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"));
+        .def(py::init<const std::vector<std::shared_ptr<Tensor>> &>(), py::arg("inputs"))
+        // forward()
+        .def("forward", &StackOp::forward, "Forward pass")
+        .def_readonly("output", &StackOp::output, "Output tensor");
 
     py::module tensor = m.def_submodule("tensor", "Tensor operations and classes");
 
@@ -111,6 +113,12 @@ PYBIND11_MODULE(cugrad, m)
             t->data[i] = ptr[i];
         }
 
+        // Copy to device if necessary
+        if (DeviceManager::get_instance().get_current_device() == DeviceType::CUDA)
+        {
+            t->copy_to_device();
+        }
+
         return t; }),
              "Construct a Tensor from a NumPy array")
 
@@ -131,6 +139,7 @@ PYBIND11_MODULE(cugrad, m)
         .def("allocate_memory_on_device", &Tensor::allocate_memory_on_device, "Allocate memory on the device")
         .def("to_device", &Tensor::to_device, "Move tensor to the specified device")
         .def("copy_to_device", &Tensor::copy_to_device, "Copy tensor to the device")
+        .def("copy_to_host", &Tensor::copy_to_host, "Copy tensor to the host")
 
         // Operator Overloads
         .def("__add__", &operator+, py::is_operator())
@@ -147,7 +156,8 @@ PYBIND11_MODULE(cugrad, m)
         // Other operations
         .def("tanh", &Tensor::tanh, "Apply the tanh operation")
         .def("relu", &Tensor::relu, "Apply the ReLU operation")
-        .def("exp", &Tensor::exp, "Apply the exponential operation");
+        .def("exp", &Tensor::exp, "Apply the exponential operation")
+        .def("sum", &Tensor::sum, "Sum all elements of the tensor");
 
     py::module optimizer = m.def_submodule("optimizer", "Optimization algorithms");
 

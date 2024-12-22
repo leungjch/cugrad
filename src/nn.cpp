@@ -27,6 +27,8 @@ Neuron::Neuron(int in_features, bool nonlin) : in_features(in_features), nonlin(
 
     bias = std::make_shared<Tensor>(std::vector<int>{1});
     bias->data[0] = make_random();
+    weights->to_device(DeviceManager::get_instance().get_current_device());
+    bias->to_device(DeviceManager::get_instance().get_current_device());
 }
 
 std::shared_ptr<Tensor> Neuron::operator()(std::shared_ptr<Tensor> input)
@@ -80,7 +82,6 @@ std::shared_ptr<Tensor> Layer::operator()(std::shared_ptr<Tensor> input)
     // Use StackOp to combine these into a single [out_features]-shaped tensor
     auto stack_op = std::make_shared<StackOp>(neuron_outputs);
     stack_op->forward();
-    // stack_op->forward() sets stack_op->output
 
     return stack_op->output; // This output now has a proper op and children set
 }

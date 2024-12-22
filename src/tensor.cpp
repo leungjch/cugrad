@@ -13,6 +13,35 @@
 #include "tensor.h"
 #include "op.h"
 
+// Default constructor
+Tensor::Tensor()
+{
+    shape = {1};
+    data.resize(1, 0.0f);
+    grad.resize(1, 0.0f);
+    device = DeviceManager::get_instance().get_current_device();
+
+    if (device == DeviceType::CUDA)
+    {
+        allocate_memory_on_device();
+        copy_to_device();
+    }
+}
+
+// Destructor
+Tensor::~Tensor()
+{
+    // If data allocated on device, free it
+    if (d_data)
+    {
+        cudaFree(d_data);
+    }
+    if (d_grad)
+    {
+        cudaFree(d_grad);
+    }
+}
+
 // Constructs a tensor of given shape with optional initialization
 Tensor::Tensor(const std::vector<int> &shape, float init_val,
                std::shared_ptr<Op> op,
@@ -31,6 +60,11 @@ Tensor::Tensor(const std::vector<int> &shape, float init_val,
     data.resize(total_size, init_val);
     grad.resize(total_size, 0.0f);
     device = DeviceManager::get_instance().get_current_device();
+    if (device == DeviceType::CUDA)
+    {
+        allocate_memory_on_device();
+        copy_to_device();
+    }
 }
 
 std::ostream &operator<<(std::ostream &os, const Tensor &tensor)
@@ -179,6 +213,12 @@ void Tensor::backward()
     // Initialize the gradient of the output tensor to 1.0
     std::fill(grad.begin(), grad.end(), 1.0);
 
+    // If device is CUDA, copy the gradients to the device
+    if (device == DeviceType::CUDA)
+    {
+        cudaMemcpy(d_grad, grad.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+    }
+
     // Get the topological ordering of the compute graph
     std::vector<std::shared_ptr<Tensor>> ordering;
     topological_sort(ordering);
@@ -198,6 +238,11 @@ void Tensor::backward()
 void Tensor::zero_grad()
 {
     std::fill(grad.begin(), grad.end(), 0.0);
+    // If device is CUDA, copy the gradients to the device
+    if (device == DeviceType::CUDA)
+    {
+        cudaMemcpy(d_grad, grad.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+    }
 
     // Recursively zero the gradients of the children
     for (auto child : children)
@@ -268,7 +313,7 @@ std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &a, const std::s
 
 void Tensor::allocate_memory_on_device()
 {
-    if (device == DeviceType::CUDA)
+    if (device == DeviceType::CUDA && d_data == nullptr)
     {
         cudaMalloc(&d_data, size() * sizeof(float));
         cudaMalloc(&d_grad, size() * sizeof(float));
@@ -281,19 +326,22 @@ void Tensor::allocate_memory_on_device()
 
 void Tensor::to_device(DeviceType new_device)
 {
-    if (device == new_device)
-    {
-        return;
-    }
-
     if (new_device == DeviceType::CUDA)
     {
         allocate_memory_on_device();
         copy_to_device();
+        device = new_device;
     }
     else
     {
         copy_to_host();
+        device = new_device;
+    }
+
+    // Recursively move children to the same device
+    for (auto child : children)
+    {
+        child->to_device(new_device);
     }
 }
 

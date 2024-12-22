@@ -4,6 +4,7 @@
 #include "tensor.h"
 #include "op_cuda.h"
 
+// Utility functions for shape checks
 static void check_same_shape_for_binary(const std::vector<std::shared_ptr<Tensor>> &inputs)
 {
     if (inputs.size() != 2)
@@ -44,26 +45,38 @@ void AddOp::forward()
     else
     {
         // GPU path
-        inputs[0]->allocate_memory_on_device();
-        inputs[1]->allocate_memory_on_device();
         output->allocate_memory_on_device();
 
-        inputs[0]->copy_to_device();
-        inputs[1]->copy_to_device();
+        // std::cout << "add_forward_cuda" << std::endl;
+        float input_0;
+        cudaMemcpy(&input_0, inputs[0]->d_data, sizeof(float), cudaMemcpyDeviceToHost);
+        float input_1;
+        cudaMemcpy(&input_1, inputs[1]->d_data, sizeof(float), cudaMemcpyDeviceToHost);
 
+        float output_before;
+        cudaMemcpy(&output_before, output->d_data, sizeof(float), cudaMemcpyDeviceToHost);
+
+        // std::cout << "inputs 0-d_data" << input_0 << std::endl;
+        // std::cout << "inputs CPU 0-data" << inputs[0]->data[0] << std::endl;
+        // std::cout << "inputs 1-d_data" << input_1 << std::endl;
+        // std::cout << "inputs CPU 1-data" << inputs[1]->data[0] << std::endl;
+
+        // std::cout << "output-d_data before" << output_before << std::endl;
         add_forward_cuda(inputs[0]->d_data, inputs[1]->d_data, output->d_data, sz);
+        float output_after;
+        cudaMemcpy(&output_after, output->d_data, sizeof(float), cudaMemcpyDeviceToHost);
+        // std::cout << "output-d_data after" << output_after << std::endl;
     }
-
     output->op = shared_from_this();
     output->children = inputs;
 }
 
 void AddOp::backward()
 {
+
     int sz = output->size();
     if (output->device == DeviceType::CPU)
     {
-        // CPU
         for (int i = 0; i < sz; i++)
         {
             inputs[0]->grad[i] += output->grad[i];
@@ -72,8 +85,6 @@ void AddOp::backward()
     }
     else
     {
-        // GPU
-        output->copy_to_device();
         inputs[0]->allocate_memory_on_device();
         inputs[1]->allocate_memory_on_device();
 
@@ -99,12 +110,7 @@ void SubtractOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
-        inputs[1]->allocate_memory_on_device();
         output->allocate_memory_on_device();
-
-        inputs[0]->copy_to_device();
-        inputs[1]->copy_to_device();
 
         sub_forward_cuda(inputs[0]->d_data, inputs[1]->d_data, output->d_data, sz);
     }
@@ -126,7 +132,8 @@ void SubtractOp::backward()
     }
     else
     {
-        output->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
         inputs[1]->allocate_memory_on_device();
 
@@ -152,13 +159,7 @@ void MultiplyOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
-        inputs[1]->allocate_memory_on_device();
         output->allocate_memory_on_device();
-
-        inputs[0]->copy_to_device();
-        inputs[1]->copy_to_device();
-
         mul_forward_cuda(inputs[0]->d_data, inputs[1]->d_data, output->d_data, sz);
     }
 
@@ -179,13 +180,17 @@ void MultiplyOp::backward()
     }
     else
     {
-        output->copy_to_device();
-        inputs[0]->copy_to_device(); // we need a and b data for backward
-        inputs[1]->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
         inputs[1]->allocate_memory_on_device();
 
-        mul_backward_cuda(output->d_grad, inputs[0]->d_data, inputs[1]->d_data, inputs[0]->d_grad, inputs[1]->d_grad, sz);
+        mul_backward_cuda(output->d_grad,
+                          inputs[0]->d_data,
+                          inputs[1]->d_data,
+                          inputs[0]->d_grad,
+                          inputs[1]->d_grad,
+                          sz);
     }
 }
 
@@ -209,14 +214,10 @@ void DivideOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
-        inputs[1]->allocate_memory_on_device();
         output->allocate_memory_on_device();
-
         inputs[0]->copy_to_device();
         inputs[1]->copy_to_device();
 
-        // Assume no zero division since CPU checked
         div_forward_cuda(inputs[0]->d_data, inputs[1]->d_data, output->d_data, sz);
     }
 
@@ -239,13 +240,17 @@ void DivideOp::backward()
     }
     else
     {
-        output->copy_to_device();
-        inputs[0]->copy_to_device();
-        inputs[1]->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
         inputs[1]->allocate_memory_on_device();
 
-        div_backward_cuda(output->d_grad, inputs[0]->d_data, inputs[1]->d_data, inputs[0]->d_grad, inputs[1]->d_grad, sz);
+        div_backward_cuda(output->d_grad,
+                          inputs[0]->d_data,
+                          inputs[1]->d_data,
+                          inputs[0]->d_grad,
+                          inputs[1]->d_grad,
+                          sz);
     }
 }
 
@@ -267,9 +272,9 @@ void ExpOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
         output->allocate_memory_on_device();
         inputs[0]->copy_to_device();
+
         exp_forward_cuda(inputs[0]->d_data, output->d_data, sz);
     }
 
@@ -289,9 +294,10 @@ void ExpOp::backward()
     }
     else
     {
-        output->copy_to_device();
-        inputs[0]->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
+
         exp_backward_cuda(output->d_grad, inputs[0]->d_data, inputs[0]->d_grad, sz);
     }
 }
@@ -314,10 +320,7 @@ void TanhOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
         output->allocate_memory_on_device();
-        inputs[0]->copy_to_device();
-
         tanh_forward_cuda(inputs[0]->d_data, output->d_data, sz);
     }
 
@@ -338,8 +341,8 @@ void TanhOp::backward()
     }
     else
     {
-        // We have the output->data which is tanh(a). Use it directly.
-        output->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
 
         tanh_backward_cuda(output->d_grad, output->d_data, inputs[0]->d_grad, sz);
@@ -364,10 +367,7 @@ void ReluOp::forward()
     }
     else
     {
-        inputs[0]->allocate_memory_on_device();
         output->allocate_memory_on_device();
-        inputs[0]->copy_to_device();
-
         relu_forward_cuda(inputs[0]->d_data, output->d_data, sz);
     }
 
@@ -387,9 +387,10 @@ void ReluOp::backward()
     }
     else
     {
-        output->copy_to_device();
-        inputs[0]->copy_to_device();
+        // Removed output->copy_to_device();
+
         inputs[0]->allocate_memory_on_device();
+
         relu_backward_cuda(output->d_grad, inputs[0]->d_data, inputs[0]->d_grad, sz);
     }
 }
@@ -413,9 +414,7 @@ void SumOp::forward()
     }
     else
     {
-        in->allocate_memory_on_device();
         output->allocate_memory_on_device();
-        in->copy_to_device();
         sum_forward_cuda(in->d_data, output->d_data, sz);
     }
 
@@ -438,8 +437,10 @@ void SumOp::backward()
     }
     else
     {
-        output->copy_to_device();
+        // Removed output->copy_to_device();
+
         in->allocate_memory_on_device();
+
         sum_backward_cuda(output->d_grad, in->d_grad, sz);
     }
 }
@@ -451,7 +452,7 @@ void SumOp::backward()
 void StackOp::forward()
 {
     // Suppose each input is shape [1]. Output is [N]
-    int N = (int)inputs.size();
+    int N = static_cast<int>(inputs.size());
     output = std::make_shared<Tensor>(std::vector<int>{N});
     output->device = inputs[0]->device; // assume all same device
 
@@ -466,16 +467,13 @@ void StackOp::forward()
     {
         // GPU
         // We need an array of pointers to d_data of inputs
-        // Allocate on host first
         std::vector<float *> d_inputs(N);
         for (int i = 0; i < N; i++)
         {
             inputs[i]->allocate_memory_on_device();
-            inputs[i]->copy_to_device();
             d_inputs[i] = inputs[i]->d_data;
         }
 
-        // Copy this pointer array to GPU
         float **d_input_ptrs;
         cudaMalloc((void **)&d_input_ptrs, N * sizeof(float *));
         cudaMemcpy(d_input_ptrs, d_inputs.data(), N * sizeof(float *), cudaMemcpyHostToDevice);
@@ -493,7 +491,7 @@ void StackOp::forward()
 
 void StackOp::backward()
 {
-    int N = (int)inputs.size();
+    int N = static_cast<int>(inputs.size());
     if (output->device == DeviceType::CPU)
     {
         float *g_out = output->grad.data();
@@ -504,9 +502,7 @@ void StackOp::backward()
     }
     else
     {
-        // GPU
-        output->copy_to_device();
-        // We need grad pointers for each input
+        // Create array of device pointers for input gradients
         std::vector<float *> d_grads_in(N);
         for (int i = 0; i < N; i++)
         {
@@ -518,6 +514,7 @@ void StackOp::backward()
         cudaMalloc((void **)&d_grad_ptrs, N * sizeof(float *));
         cudaMemcpy(d_grad_ptrs, d_grads_in.data(), N * sizeof(float *), cudaMemcpyHostToDevice);
 
+        // Perform CUDA stack backward operation
         stack_backward_cuda(output->d_grad, d_grad_ptrs, N);
 
         cudaFree(d_grad_ptrs);
