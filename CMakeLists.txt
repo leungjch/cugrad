@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Enable CUDA
 enable_language(CUDA)
+find_package(CUDA REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
+
 
 # Include CMake modules
 include(FetchContent)
