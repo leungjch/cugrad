@@ -13,9 +13,13 @@
 #include "tensor.h"
 #include "op.h"
 
+#include "Tracy.hpp" // Include Tracy's header
+
 // Default constructor
 Tensor::Tensor()
 {
+    ZoneScopedN("Tensor constructor"); // Named profiling zone
+
     shape = {1};
     data.resize(1, 0.0f);
     grad.resize(1, 0.0f);
@@ -48,6 +52,8 @@ Tensor::Tensor(const std::vector<int> &shape, float init_val,
                std::vector<std::shared_ptr<Tensor>> children)
     : shape(shape), op(op), children(children)
 {
+    ZoneScopedN("Tensor constructor"); // Named profiling zone
+
     int total_size = 1;
     for (auto s : shape)
     {
@@ -210,6 +216,8 @@ std::shared_ptr<Tensor> Tensor::sum()
 
 void Tensor::backward()
 {
+    ZoneScopedN("Backward"); // Named profiling zone
+
     // Initialize the gradient of the output tensor to 1.0
     std::fill(grad.begin(), grad.end(), 1.0);
 
@@ -313,14 +321,22 @@ std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &a, const std::s
 
 void Tensor::allocate_memory_on_device()
 {
+    ZoneScopedN("Allocate memory on device"); // Named profiling zone
     if (device == DeviceType::CUDA && d_data == nullptr)
     {
-        cudaMalloc(&d_data, size() * sizeof(float));
-        cudaMalloc(&d_grad, size() * sizeof(float));
+        cudaMallocAsync(&d_data, size() * sizeof(float), stream);
+        cudaMallocAsync(&d_grad, size() * sizeof(float), stream);
 
-        // Copy to GPU
-        cudaMemcpy(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemset(d_grad, 0, size() * sizeof(float));
+        // Initialize device memory
+        cudaMemcpyAsync(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice, stream);
+        cudaMemsetAsync(d_grad, 0, size() * sizeof(float), stream);
+
+        // cudaMalloc(&d_data, size() * sizeof(float));
+        // cudaMalloc(&d_grad, size() * sizeof(float));
+
+        // // Copy to GPU
+        // cudaMemcpy(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
+        // cudaMemset(d_grad, 0, size() * sizeof(float));
     }
 }
 
@@ -328,12 +344,14 @@ void Tensor::to_device(DeviceType new_device)
 {
     if (new_device == DeviceType::CUDA)
     {
+        ZoneScopedN("To device CUDA"); // Named profiling zone
         allocate_memory_on_device();
         copy_to_device();
         device = new_device;
     }
     else
     {
+        ZoneScopedN("To device CPU"); // Named profiling zone
         copy_to_host();
         device = new_device;
     }
@@ -347,6 +365,7 @@ void Tensor::to_device(DeviceType new_device)
 
 void Tensor::copy_to_device()
 {
+    ZoneScopedN("Copy to device"); // Named profiling zone
     if (device == DeviceType::CUDA)
     {
         cudaMemcpy(d_data, data.data(), size() * sizeof(float), cudaMemcpyHostToDevice);
@@ -356,6 +375,7 @@ void Tensor::copy_to_device()
 
 void Tensor::copy_to_host()
 {
+    ZoneScopedN("Copy to host"); // Named profiling zone
     if (device == DeviceType::CUDA)
     {
         cudaMemcpy(data.data(), d_data, size() * sizeof(float), cudaMemcpyDeviceToHost);

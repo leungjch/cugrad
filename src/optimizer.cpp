@@ -5,6 +5,8 @@
 
 #include <cstddef> // for size_t
 
+#include "Tracy.hpp" // Include Tracy's header
+
 // Optimizer Methods
 Optimizer::Optimizer(const std::vector<std::shared_ptr<Tensor>> &parameters)
     : parameters(parameters)
@@ -15,6 +17,7 @@ Optimizer::~Optimizer() {}
 
 void Optimizer::zero_grad()
 {
+    ZoneScopedN("Zero gradients"); // Named profiling zone
     for (auto &param : parameters)
     {
         param->zero_grad();
@@ -29,6 +32,7 @@ SGD::SGD(const std::vector<std::shared_ptr<Tensor>> &parameters, float lr)
 
 void SGD::step()
 {
+    ZoneScopedN("SGD Step"); // Named profiling zone
     for (auto &param : parameters)
     {
         int sz = param->size();

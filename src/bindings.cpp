@@ -16,6 +16,15 @@
 
 namespace py = pybind11;
 
+// Example function that uses Tracy profiling
+void example_function()
+{
+    ZoneScopedN("Example func"); // Named profiling zone
+    // Your function implementation
+    // Simulate some work
+    for (int i = 0; i < 1000000; ++i)
+        ;
+}
 // Function to print Tracy server info
 void print_tracy_info()
 {
@@ -38,16 +47,8 @@ void print_tracy_info()
 #else
     std::cout << "[Tracy] Tracy profiling is disabled." << std::endl;
 #endif
-}
 
-// Example function that uses Tracy profiling
-void example_function()
-{
-    ZoneScoped;
-    // Your function implementation
-    // Simulate some work
-    for (int i = 0; i < 1000000; ++i)
-        ;
+    example_function();
 }
 
 PYBIND11_MODULE(cugrad, m)

@@ -8,6 +8,8 @@
 #include <random>
 #include <stdexcept>
 
+#include "Tracy.hpp" // Include Tracy's header
+
 float make_random()
 {
     // Create a random float between -1 and 1
@@ -33,6 +35,7 @@ Neuron::Neuron(int in_features, bool nonlin) : in_features(in_features), nonlin(
 
 std::shared_ptr<Tensor> Neuron::operator()(std::shared_ptr<Tensor> input)
 {
+    ZoneScopedN("Neuron forward pass"); // Named profiling zone
     // Input must have shape [in_features]
     if (input->shape.size() != 1 || input->shape[0] != in_features)
     {
@@ -69,6 +72,8 @@ Layer::Layer(int in_features, int out_features, bool nonlin) : in_features(in_fe
 
 std::shared_ptr<Tensor> Layer::operator()(std::shared_ptr<Tensor> input)
 {
+    ZoneScopedN("Layer Forward Pass"); // Named profiling zone
+
     std::vector<std::shared_ptr<Tensor>> neuron_outputs;
     neuron_outputs.reserve(out_features);
 
@@ -115,6 +120,8 @@ MLP::MLP(int input_size, const std::vector<int> &layer_sizes)
 
 std::shared_ptr<Tensor> MLP::operator()(std::shared_ptr<Tensor> input)
 {
+    ZoneScopedN("MLP Forward Pass"); // Named profiling zone
+
     auto x = input;
     for (auto &layer : layers)
     {
