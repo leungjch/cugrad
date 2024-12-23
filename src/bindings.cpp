@@ -12,10 +12,49 @@
 #include "optimizer.h"
 #include "device_manager.h"
 
+#include "Tracy.hpp" // Include Tracy's header
+
 namespace py = pybind11;
+
+// Function to print Tracy server info
+void print_tracy_info()
+{
+#ifdef TRACY_ENABLE
+    const char *tracy_addr = std::getenv("TRACY_ADDR");
+    const char *tracy_port = std::getenv("TRACY_PORT");
+
+    // Set defaults if environment variables are not set
+    if (!tracy_addr)
+    {
+        tracy_addr = "127.0.0.1"; // Default address
+    }
+    if (!tracy_port)
+    {
+        tracy_port = "8086"; // Default port
+    }
+
+    std::cout << "[Tracy] Connecting to Tracy server at "
+              << tracy_addr << ":" << tracy_port << std::endl;
+#else
+    std::cout << "[Tracy] Tracy profiling is disabled." << std::endl;
+#endif
+}
+
+// Example function that uses Tracy profiling
+void example_function()
+{
+    ZoneScoped;
+    // Your function implementation
+    // Simulate some work
+    for (int i = 0; i < 1000000; ++i)
+        ;
+}
 
 PYBIND11_MODULE(cugrad, m)
 {
+    print_tracy_info();
+    m.def("example_function", &example_function, "An example function that uses Tracy profiling");
+
     m.doc() = "cugrad: A CUDA-based automatic differentiation library";
 
     // Add a function to set the device from Python

@@ -36,7 +36,7 @@ def mse_loss(predictions, targets):
 
 # Set training parameters
 learning_rate = 0.005
-epochs = 1000
+epochs = 10000
 
 optimizer = SGD(model.parameters(), lr=learning_rate)
 

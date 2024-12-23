@@ -20,15 +20,12 @@ X_norm = (X - X_mean) / X_std
 
 # Split into train and test
 X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.2, random_state=42)
-
 # Convert to lists of Tensors for easy iteration
 train_data = [(Tensor(x), Tensor([y_])) for x, y_ in zip(X_train, y_train)]
 test_data = [(Tensor(x), Tensor([y_])) for x, y_ in zip(X_test, y_test)]
 
 # Define a small MLP: 13 input features -> [16, 16] hidden layers -> 1 output
 model = MLP(input_size=8, layer_sizes=[16, 16, 1])
-
-
 
 # Mean Squared Error (MSE) loss
 def mse_loss(predictions, targets):
@@ -47,7 +44,7 @@ def mse_loss(predictions, targets):
 optimizer = SGD(model.parameters(), lr=0.01)
 
 # Training loop
-epochs = 100
+epochs = 10
 for epoch in range(epochs):
     # Shuffle data
     np.random.shuffle(train_data)
