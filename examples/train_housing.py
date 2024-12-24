@@ -6,7 +6,7 @@ from cugrad.nn import MLP
 from cugrad.optimizer import SGD
 from cugrad import set_device, DeviceType
 
-set_device(DeviceType.CUDA)
+set_device(DeviceType.CPU)
 
 from sklearn.datasets import fetch_california_housing
 data = fetch_california_housing()
