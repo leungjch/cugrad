@@ -6,7 +6,7 @@
 
 cugrad is a simple automatic differentiation library written in C++ with Python bindings resembling the PyTorch API. It supports CPU and CUDA backends.
 
-The engine is a C++ extension of [Andrej Karpathy's micrograd](https://github.com/karpathy/micrograd), adding multidimensional tensor support and CUDA. This is mainly a learning project to understand how automatic differentiation and GPU acceleration works from scratch and not intended for production use.
+The engine is a C++ port of [Andrej Karpathy's micrograd](https://github.com/karpathy/micrograd), also adding multidimensional tensor support and CUDA. This is mainly a learning project to understand how automatic differentiation and GPU acceleration works from scratch and not intended for production use.
 
 ## Building
 
@@ -30,7 +30,7 @@ pytest tests/*
 
 ## Usage
 
-Python bindings provide a very similar API to Pytorch. Here is an example MLP that learns XOR:
+Python bindings provide a very similar API to PyTorch. Here is an example MLP that learns XOR:
 
 https://github.com/leungjch/cugrad/blob/23342f4f2633bc4dfd66d41cf9d2b10337088cf0/examples/train_xor.py#L1-L76
 
@@ -54,7 +54,7 @@ Input: [1.0, 0.0], Predicted: 0.9683, Target: 1.0
 Input: [1.0, 1.0], Predicted: 0.0285, Target: 0.0
 ```
 
-See also [demo.ipynb](https://github.com/leungjch/cugrad/blob/main/examples/demo.ipynb) adapted from [micrograd](https://github.com/karpathy/micrograd/blob/master/demo.ipynb) which trains a 2D classifier:
+See also [demo.ipynb](https://github.com/leungjch/cugrad/blob/main/examples/demo.ipynb) adapted from [micrograd's demo](https://github.com/karpathy/micrograd/blob/master/demo.ipynb) which trains a 2D classifier:
 
 ![image](https://github.com/user-attachments/assets/5aaf034e-294b-403c-b3cc-d48ceae423f0)
 
