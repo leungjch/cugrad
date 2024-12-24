@@ -46,3 +46,8 @@ Input: [0.0, 1.0], Predicted: 0.9858, Target: 1.0
 Input: [1.0, 0.0], Predicted: 0.9683, Target: 1.0
 Input: [1.0, 1.0], Predicted: 0.0285, Target: 0.0
 ```
+
+See also [demo.ipynb](https://github.com/leungjch/cugrad/blob/main/examples/demo.ipynb) adapted from [micrograd](https://github.com/karpathy/micrograd/blob/master/demo.ipynb) which trains a 2D classifier:
+
+![image](https://github.com/user-attachments/assets/5aaf034e-294b-403c-b3cc-d48ceae423f0)
+
