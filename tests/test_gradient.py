@@ -40,7 +40,6 @@ class TestGradients(unittest.TestCase):
         self.assertEqual(b.grad, [2.0])
 
     def test_gradient_tanh(self):
-        set_device(DeviceType.CUDA)
         a = Tensor([1]); a.label = "a"
         a.data = [0.5]
         b = Tensor([1]); b.label = "b"
@@ -55,7 +54,6 @@ class TestGradients(unittest.TestCase):
         self.assertAlmostEqual(c.grad[0], 0.0, places=5)
 
     def test_gradient_mlp(self):
-        set_device(DeviceType.CUDA)
         from cugrad.nn import MLP
         model = MLP(input_size=2, layer_sizes=[2, 1])
 
@@ -81,7 +79,7 @@ class TestGradients(unittest.TestCase):
             param.to_device(DeviceType.CPU)
             print("before param.data: ", param.data)
             print("before param.grad: ", param.grad)
-            param.to_device(DeviceType.CUDA)
+            # param.to_device(DeviceType.CUDA) # move back to CUDA if CUDA is used
 
 
         loss.backward()
@@ -215,7 +213,6 @@ class TestGradients(unittest.TestCase):
 
         # Initialize output gradient
         output.grad = [1.0]
-        output.to_device(DeviceType.CUDA)
 
         # Perform backward pass
         output.backward()
