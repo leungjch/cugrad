@@ -10,7 +10,14 @@ The engine is a C++ extension of [Andrej Karpathy's micrograd](https://github.co
 
 ## Building
 
-To build the cugrad Python bindings, run
+Requires standard CUDA dev tools (nvcc, cuda toolkit). 
+
+Install pip dependencies (pybind11, etc):
+```
+pip install -r requirements.txt
+```
+
+To build cugrad and install the Python bindings, run
 ```bash.
 pip install .
 ```
