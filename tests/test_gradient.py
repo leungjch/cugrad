@@ -40,10 +40,8 @@ class TestGradients(unittest.TestCase):
         self.assertEqual(b.grad, [2.0])
 
     def test_gradient_tanh(self):
-        a = Tensor([1]); a.label = "a"
-        a.data = [0.5]
-        b = Tensor([1]); b.label = "b"
-        b.data = [0.25]
+        a = Tensor([0.5])
+        b = Tensor([0.25])
         sm = (a+b); sm.label = "sm"
         # sm.copy_to_host()
         c = sm.tanh(); c.label = "c"
@@ -133,19 +131,11 @@ class TestGradients(unittest.TestCase):
         Test the backward pass of StackOp by ensuring gradients are correctly
         propagated back to each input tensor.
         """
-        # Set device to CUDA if available
-        try:
-            set_device(DeviceType.CUDA)
-        except Exception as e:
-            self.skipTest("CUDA device not available")
         
         # Create multiple [1]-shaped tensors
-        t1 = Tensor([1])
-        t1.data = [1.0]
-        t2 = Tensor([1])
-        t2.data = [2.0]
-        t3 = Tensor([1])
-        t3.data = [3.0]
+        t1 = Tensor([1.0])
+        t2 = Tensor([2.0])
+        t3 = Tensor([3.0])
 
         # Perform stacking including t1
         stack_op = StackOp([t1, t2, t3])
