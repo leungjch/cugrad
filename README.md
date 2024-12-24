@@ -25,7 +25,7 @@ pytest tests/*
 
 Python bindings provide a very similar API to Pytorch. Here is an example MLP that learns XOR:
 
-https://github.com/leungjch/cugrad/blob/c9096292901ced4a748e12297dfc1dd78e5c50ca/examples/train_xor.py#L1-L72
+https://github.com/leungjch/cugrad/blob/23342f4f2633bc4dfd66d41cf9d2b10337088cf0/examples/train_xor.py#L1-L76
 
 Output:
 ```
