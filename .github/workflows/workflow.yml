@@ -25,7 +25,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake wget gnupg unzip
+          sudo apt-get install -y build-essential cmake wget gnupg
 
       - name: Install CUDA Toolkit
         run: |
@@ -38,11 +38,17 @@ jobs:
           # Install the specified CUDA toolkit version
           sudo apt-get -y install cuda-toolkit-${{ env.CUDA_VERSION }}
 
-      - name: Create CUDA Symlink
+      - name: Install pybind11
         run: |
-          sudo ln -sfn /usr/local/cuda-${{ env.CUDA_VERSION }} /usr/local/cuda
+          sudo apt-get install -y pybind11-dev
 
-      - name: Verify CUDA Installation
+      - name: Set CUDA environment variables
+        run: |
+          echo "CUDA_HOME=/usr/local/cuda-${{ env.CUDA_VERSION }}" >> $GITHUB_ENV
+          echo "/usr/local/cuda-${{ env.CUDA_VERSION }}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-${{ env.CUDA_VERSION }}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      - name: Verify CUDA installation
         run: |
           nvcc --version
           # nvidia-smi is typically not available on GitHub's virtual environments
@@ -54,44 +60,19 @@ jobs:
               nvidia-smi
           fi
 
-      - name: Install pybind11
-        run: |
-          sudo apt-get install -y pybind11-dev
-
-      - name: Set CUDA environment variables
-        run: |
-          echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
-          echo "/usr/local/cuda/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
-
-      - name: Verify CUDA Headers
-        run: |
-          ls -la /usr/local/cuda/include/cuda_runtime.h
-
-      - name: Check cuda_runtime.h
-        run: |
-          if [ -f "/usr/local/cuda/include/cuda_runtime.h" ]; then
-            echo "cuda_runtime.h found."
-          else
-            echo "cuda_runtime.h not found!"
-            exit 1
-          fi
-
       - name: Upgrade pip
         run: pip install --upgrade pip
 
       - name: Install Python Dependencies
         run: |
           pip install -r requirements.txt
-
-      - name: Install build dependencies
-        run: pip install .
+          pip install .
 
       - name: Configure CMake
         run: |
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=$(which python) -DCMAKE_PREFIX_PATH=/usr/local/cuda
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=$(which python)
 
       - name: Build with CMake
         run: |
@@ -108,6 +89,6 @@ jobs:
       #   uses: actions/cache@v3
       #   with:
       #     path: ~/.cache/pip
-      #     key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      #     key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
       #     restore-keys: |
       #       ${{ runner.os }}-pip-
